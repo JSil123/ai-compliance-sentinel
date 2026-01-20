@@ -1,3 +1,7 @@
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Running on port ${PORT}`);
+});
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -15,4 +19,5 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
+
 
