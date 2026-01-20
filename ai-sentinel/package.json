@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Hackathon prototype: AI Compliance Sentinel (Security + HR + Legal)",
   "main": "server.js",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "seed": "node seed.js",
     "start": "node server.js"
@@ -14,3 +14,4 @@
     "sqlite3": "^5.1.7"
   }
 }
+
