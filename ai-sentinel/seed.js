@@ -1,4 +1,5 @@
-const { getDb } = require("./db");
+
+import { getDb } from "./db.js";
 
 async function seed() {
   const db = await getDb();
@@ -419,3 +420,4 @@ seed().catch((e) => {
   console.error("Seed failed:", e);
   process.exit(1);
 });
+
