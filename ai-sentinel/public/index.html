@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>AI Compliance Sentinel</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>AI Compliance Sentinel</h1>
+    <p class="subtitle">Unified Governance Intelligence (Security + HR + Legal) — Demo Prototype</p>
+  </header>
+
+  <section class="controls">
+    <button id="runAnalysis">Run Compliance Analysis</button>
+
+    <div class="filters">
+      <label>Status:
+        <select id="statusFilter">
+          <option value="">All</option>
+          <option value="OPEN">OPEN</option>
+          <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
+          <option value="RESOLVED">RESOLVED</option>
+        </select>
+      </label>
+
+      <label>Owner:
+        <select id="ownerFilter">
+          <option value="">All</option>
+          <option value="Security">Security</option>
+          <option value="HR">HR</option>
+          <option value="Legal">Legal</option>
+          <option value="DataGov">DataGov</option>
+        </select>
+      </label>
+
+      <label>Jurisdiction:
+        <select id="jurisdictionFilter">
+          <option value="">All</option>
+          <option value="EU">EU</option>
+          <option value="US">US</option>
+          <option value="GLOBAL">GLOBAL</option>
+        </select>
+      </label>
+
+      <button id="refresh">Refresh</button>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="panel">
+      <h2>Alerts</h2>
+      <table id="alertsTable">
+        <thead>
+          <tr>
+            <th>Created</th>
+            <th>Owner</th>
+            <th>Jurisdiction</th>
+            <th>Severity</th>
+            <th>Risk</th>
+            <th>Title</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div id="alertDetails" class="details hidden"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Ask the Compliance Brain</h2>
+      <textarea id="question" rows="5" placeholder="Example: Can we use PHI to train an AI model for healthcare research in the EU?"></textarea>
+      <button id="askBtn">Ask</button>
+      <pre id="answerBox" class="answer"></pre>
+      <div id="citationsBox" class="citations"></div>
+    </div>
+  </section>
+
+  <footer>
+    <small>Demo note: All laws/policies/data are mock examples for hackathon prototyping.</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
