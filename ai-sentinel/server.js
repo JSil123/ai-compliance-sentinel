@@ -7,6 +7,11 @@ const { runAnalysis } = require("./analyzer");
 (async () => {
   await getDb();
 })();
+(async () => {
+  const db = await getDb();
+  const { runAnalysis } = require("./analyzer");
+  await runAnalysis(db);
+})();
 
 const app = express();
 app.use(express.json());
@@ -165,3 +170,4 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`✅ AI Compliance Sentinel running on port ${PORT}`);
 });
+
