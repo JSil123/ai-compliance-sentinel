@@ -1,5 +1,4 @@
-
-import { getDb } from "./db.js";
+const { getDb } = require("./db");
 
 async function seed() {
   const db = await getDb();
@@ -413,11 +412,10 @@ async function seed() {
   // (Analyzer will generate them)
 
   await db.close();
-  console.log("Database seeded successfully.");
+  console.log("✅ Database seeded successfully.");
 }
 
 seed().catch((e) => {
   console.error("Seed failed:", e);
   process.exit(1);
 });
-
