@@ -1,11 +1,8 @@
 {
   "name": "ai-compliance-sentinel",
   "version": "1.0.0",
-  "description": "Hackathon prototype: AI Compliance Sentinel (Security + HR + Legal)",
   "main": "server.js",
-  "type": "commonjs",
   "scripts": {
-    "seed": "node seed.js",
     "start": "node server.js"
   },
   "dependencies": {
