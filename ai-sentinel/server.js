@@ -41,8 +41,28 @@ app.post("/api/analyze", async (req, res) => {
  * Alerts API
  */
 app.get("/api/alerts", async (req, res) => {
-  const db = await getDb();
-  const rows = await db.all(`SELECT * FROM alerts ORDER BY created_at DESC`);
+  try {
+    const db = await getDb();
+    const rows = await db.all(`
+      SELECT * FROM alerts
+      ORDER BY created_at DESC
+    `);
+
+    res.json(
+      rows.map(a => ({
+        title: a.type,
+        risk: a.severity,
+        description: a.message,
+        jurisdiction: a.jurisdiction,
+        citations: a.citations ? JSON.parse(a.citations) : []
+      }))
+    );
+  } catch (err) {
+    console.error(err);
+    res.status(500).json([]);
+  }
+});
+
 
   res.json(
     rows.map(a => ({
@@ -115,3 +135,4 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () =>
   console.log(`✅ AI Compliance Sentinel running on port ${PORT}`)
 );
+
