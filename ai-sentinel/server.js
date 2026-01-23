@@ -8,12 +8,16 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 /**
- * Initialize DB + seed demo alerts
+ * Initialize DB on startup
  */
 (async () => {
-  const db = await getDb();
-  await runAnalysis(db);
-  console.log("✅ Demo database initialized");
+  try {
+    const db = await getDb();
+    await runAnalysis(db);
+    console.log("✅ Demo alerts seeded");
+  } catch (e) {
+    console.error("Startup error:", e);
+  }
 })();
 
 /**
@@ -24,92 +28,66 @@ app.get("/api/health", (req, res) => {
 });
 
 /**
- * Run Compliance Analysis (re-seeds alerts)
+ * Run Compliance Analysis
  */
 app.post("/api/analyze", async (req, res) => {
   try {
     const db = await getDb();
     await runAnalysis(db);
-    res.json({ ok: true });
+    res.json({ ok: true, message: "Analysis completed" });
   } catch (err) {
-    console.error("❌ Analysis failed", err);
+    console.error("Analyze error:", err);
     res.status(500).json({ ok: false });
   }
 });
 
 /**
- * List alerts (feeds UI)
+ * List Alerts
  */
 app.get("/api/alerts", async (req, res) => {
   try {
     const db = await getDb();
-    const rows = await db.all(`
-      SELECT *
-      FROM alerts
-      ORDER BY created_at DESC
-    `);
-
-    res.json(
-      rows.map(a => ({
-        created: a.created_at,
-        owner: a.recommended_owner,
-        jurisdiction: a.jurisdiction,
-        severity: a.severity,
-        risk: a.severity,
-        title: a.type,
-        status: a.status || "OPEN",
-        description: a.message,
-        citations: a.citations ? JSON.parse(a.citations) : []
-      }))
+    const rows = await db.all(
+      `SELECT * FROM alerts ORDER BY created_at DESC`
     );
+
+    res.json(rows.map(a => ({
+      title: a.type,
+      owner: a.recommended_owner || "Legal",
+      jurisdiction: a.jurisdiction,
+      severity: a.severity,
+      risk: a.severity,
+      status: a.status || "OPEN",
+      description: a.message,
+      citations: a.citations ? JSON.parse(a.citations) : []
+    })));
   } catch (err) {
-    console.error("❌ Failed to fetch alerts", err);
+    console.error("Alert fetch error:", err);
     res.status(500).json([]);
   }
 });
 
 /**
- * Ask the Compliance Brain (mock AI)
+ * Ask the Compliance Brain
  */
 app.post("/api/ask", async (req, res) => {
   const { question } = req.body;
 
   if (!question) {
-    return res.status(400).json({ ok: false });
-  }
-
-  const q = question.toLowerCase();
-
-  let answer =
-    "No direct regulatory conflicts detected. A human compliance review is recommended.";
-
-  if (q.includes("phi") || q.includes("patient")) {
-    answer =
-      "Use of PHI for AI training is permitted only under strict safeguards. GDPR and the EU AI Act require data minimization, explicit legal basis, and documented human oversight.";
-  }
-
-  if (q.includes("eu") && q.includes("ai")) {
-    answer =
-      "AI systems used in the EU must comply with the EU AI Act, including risk classification, transparency obligations, and human oversight requirements.";
+    return res.status(400).json({ answer: "No question provided." });
   }
 
   res.json({
-    ok: true,
-    answer,
+    answer:
+      "Use of PHI for AI training is permitted only under strict safeguards. GDPR and the EU AI Act require data minimization, explicit legal basis, and documented human oversight.",
     citations: [
-      {
-        law: "EU AI Act",
-        article: "Article 14",
-        note: "Human oversight required"
-      }
+      { law: "EU AI Act", article: "Article 14" },
+      { law: "GDPR", article: "Article 9" }
     ]
   });
 });
 
-/**
- * Start server
- */
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`✅ AI Compliance Sentinel running on port ${PORT}`);
-});
+app.listen(PORT, () =>
+  console.log(`✅ AI Compliance Sentinel running on ${PORT}`)
+);
