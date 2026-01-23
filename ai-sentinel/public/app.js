@@ -40,25 +40,16 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
-  document.getElementById("runAnalysis").onclick = async () => {
-    await fetch("/api/analyze", { method: "POST" });
-    await fetchAlerts();
-  };
+  document.getElementById("runAnalysis").addEventListener("click", async () => {
+  const btn = document.getElementById("runAnalysis");
+  btn.disabled = true;
+  btn.textContent = "Running...";
 
-  document.getElementById("refresh").onclick = fetchAlerts;
+  await fetch("/api/analyze", { method: "POST" });
+  await fetchAlerts();
 
-  document.getElementById("askBtn").onclick = async () => {
-    const question = document.getElementById("question").value;
-
-    const res = await fetch("/api/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question })
-    });
-
-    const data = await res.json();
-    document.getElementById("answerBox").textContent = data.answer;
-  };
-
-  fetchAlerts();
+  btn.textContent = "Run Compliance Analysis";
+  btn.disabled = false;
 });
+
+document.getElementById("refresh").addEventListener("click", fetchAlerts);
