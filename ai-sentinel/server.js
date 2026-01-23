@@ -2,6 +2,8 @@ const express = require("express");
 const path = require("path");
 const { getDb } = require("./db");
 const { runAnalysis } = require("./analyzer");
+const sqlite3 = require("sqlite3").verbose();
+const db = new sqlite3.Database("./compliance.db");
 
 const app = express();
 app.use(express.json());
@@ -120,3 +122,4 @@ app.listen(PORT, () => {
   console.log(`   Seed DB: npm run seed`);
   console.log(`   Run analysis: POST /api/analyze (button in UI)`);
 });
+
