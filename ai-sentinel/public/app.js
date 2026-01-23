@@ -1,89 +1,85 @@
-const alertsTableBody = document.querySelector("#alertsTable tbody");
-const alertDetails = document.getElementById("alertDetails");
+document.addEventListener("DOMContentLoaded", () => {
+  const alertsTableBody = document.querySelector("#alertsTable tbody");
+  const alertDetails = document.getElementById("alertDetails");
 
-async function fetchAlerts() {
-  const res = await fetch("/api/alerts");
-  const alerts = await res.json();
+  const runBtn = document.getElementById("runAnalysis");
+  const refreshBtn = document.getElementById("refresh");
+  const askBtn = document.getElementById("askBtn");
 
-  alertsTableBody.innerHTML = "";
+  async function fetchAlerts() {
+    try {
+      const res = await fetch("/api/alerts");
+      const alerts = await res.json();
 
-  alerts.forEach(alert => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${new Date().toLocaleDateString()}</td>
-      <td>${alert.owner}</td>
-      <td>${alert.jurisdiction}</td>
-      <td>${alert.severity}</td>
-      <td>${alert.risk}</td>
-      <td>${alert.title}</td>
-      <td>${alert.status}</td>
+      alertsTableBody.innerHTML = "";
+
+      alerts.forEach(alert => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${new Date().toLocaleDateString()}</td>
+          <td>${alert.owner || "Legal"}</td>
+          <td>${alert.jurisdiction || "GLOBAL"}</td>
+          <td>${alert.risk || "Medium"}</td>
+          <td>${alert.risk || "Medium"}</td>
+          <td>${alert.title}</td>
+          <td>OPEN</td>
+        `;
+
+        row.addEventListener("click", () => showAlertDetails(alert));
+        alertsTableBody.appendChild(row);
+      });
+    } catch (err) {
+      console.error("Failed to fetch alerts", err);
+    }
+  }
+
+  function showAlertDetails(alert) {
+    alertDetails.classList.remove("hidden");
+    alertDetails.innerHTML = `
+      <h3>${alert.title}</h3>
+      <p><strong>Risk:</strong> ${alert.risk}</p>
+      <p>${alert.description}</p>
+      <p><strong>Jurisdiction:</strong> ${alert.jurisdiction}</p>
+      <h4>Sources</h4>
+      <ul>
+        ${(alert.citations || [])
+          .map(c => `<li>${c.law || c.title} ${c.article || ""}</li>`)
+          .join("")}
+      </ul>
     `;
+  }
 
-    row.onclick = () => showAlertDetails(alert);
-    alertsTableBody.appendChild(row);
+  // Run Compliance Analysis
+  runBtn.addEventListener("click", async () => {
+    runBtn.disabled = true;
+    runBtn.textContent = "Running...";
+
+    await fetch("/api/analyze", { method: "POST" });
+    await fetchAlerts();
+
+    runBtn.textContent = "Run Compliance Analysis";
+    runBtn.disabled = false;
   });
-}
 
-function showAlertDetails(alert) {
-  alertDetails.classList.remove("hidden");
-  alertDetails.innerHTML = `
-    <h3>${alert.title}</h3>
-    <p><strong>Risk:</strong> ${alert.risk}</p>
-    <p>${alert.description}</p>
-    <p><strong>Jurisdiction:</strong> ${alert.jurisdiction}</p>
-    <h4>Sources</h4>
-    <ul>
-      ${(alert.citations || []).map(c =>
-        `<li>${c.law}: ${c.article}</li>`
-      ).join("")}
-    </ul>
-  `;
-}
+  // Refresh Alerts
+  refreshBtn.addEventListener("click", fetchAlerts);
 
-const runBtn = document.getElementById("runAnalysis");
-const refreshBtn = document.getElementById("refresh");
+  // Ask the Compliance Brain
+  askBtn.addEventListener("click", async () => {
+    const question = document.getElementById("question").value;
 
-runBtn.addEventListener("click", async () => {
-  runBtn.disabled = true;
-  runBtn.textContent = "Running...";
+    const res = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question })
+    });
 
-  await fetch("/api/analyze", { method: "POST" });
-  await fetchAlerts();
+    const data = await res.json();
+    document.getElementById("answerBox").textContent =
+      data.answer || "No response generated.";
+  });
 
-  runBtn.textContent = "Run Compliance Analysis";
-  runBtn.disabled = false;
-});
-
-refreshBtn.addEventListener("click", async () => {
-  refreshBtn.disabled = true;
-  refreshBtn.textContent = "Refreshing...";
-
-  await fetchAlerts();
-
-  refreshBtn.textContent = "Refresh";
-  refreshBtn.disabled = false;
-});
-
-
-document.getElementById("runAnalysis").onclick = async () => {
-  await fetch("/api/analyze", { method: "POST" });
+  // Initial load
   fetchAlerts();
 });
-
-};
-
-document.getElementById("refresh").onclick = fetchAlerts;
-
-document.getElementById("askBtn").onclick = async () => {
-  const question = document.getElementById("question").value;
-  const res = await fetch("/api/ask", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question })
-  });
-  const data = await res.json();
-  document.getElementById("answerBox").textContent = data.answer;
-};
-
-
-fetchAlerts();
