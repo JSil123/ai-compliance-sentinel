@@ -71,23 +71,37 @@ app.get("/api/alerts", async (req, res) => {
  * Ask the Compliance Brain
  */
 app.post("/api/ask", async (req, res) => {
-  const { question } = req.body;
+  const q = (req.body.question || "").toLowerCase();
 
-  if (!question) {
-    return res.status(400).json({ answer: "No question provided." });
+  let answer = "No direct regulatory conflict detected.";
+  let citations = [];
+
+  if (q.includes("phi") || q.includes("health")) {
+    answer =
+      "Use of PHI for AI training is permitted only under strict safeguards. GDPR and the EU AI Act require data minimization, explicit legal basis, and documented human oversight.";
+    citations = [
+      { law: "GDPR", article: "Article 9" },
+      { law: "EU AI Act", article: "Article 14" }
+    ];
+  } else if (q.includes("employee") || q.includes("hr")) {
+    answer =
+      "AI use involving employee data requires transparency, purpose limitation, and documented impact assessments.";
+    citations = [
+      { law: "GDPR", article: "Article 35" }
+    ];
+  } else if (q.includes("biometric")) {
+    answer =
+      "Biometric AI systems are classified as high-risk and may be prohibited depending on jurisdiction.";
+    citations = [
+      { law: "EU AI Act", article: "Article 5" }
+    ];
   }
 
-  res.json({
-    answer:
-      "Use of PHI for AI training is permitted only under strict safeguards. GDPR and the EU AI Act require data minimization, explicit legal basis, and documented human oversight.",
-    citations: [
-      { law: "EU AI Act", article: "Article 14" },
-      { law: "GDPR", article: "Article 9" }
-    ]
-  });
+  res.json({ ok: true, answer, citations });
 });
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () =>
   console.log(`✅ AI Compliance Sentinel running on ${PORT}`)
 );
+
