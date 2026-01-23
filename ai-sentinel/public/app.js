@@ -40,9 +40,30 @@ function showAlertDetails(alert) {
   `;
 }
 
-document.getElementById("runAnalysis").onclick = async () => {
+const runBtn = document.getElementById("runAnalysis");
+const refreshBtn = document.getElementById("refresh");
+
+runBtn.addEventListener("click", async () => {
+  runBtn.disabled = true;
+  runBtn.textContent = "Running...";
+
   await fetch("/api/analyze", { method: "POST" });
-  fetchAlerts();
+  await fetchAlerts();
+
+  runBtn.textContent = "Run Compliance Analysis";
+  runBtn.disabled = false;
+});
+
+refreshBtn.addEventListener("click", async () => {
+  refreshBtn.disabled = true;
+  refreshBtn.textContent = "Refreshing...";
+
+  await fetchAlerts();
+
+  refreshBtn.textContent = "Refresh";
+  refreshBtn.disabled = false;
+});
+
 };
 
 document.getElementById("refresh").onclick = fetchAlerts;
@@ -57,5 +78,6 @@ document.getElementById("askBtn").onclick = async () => {
   const data = await res.json();
   document.getElementById("answerBox").textContent = data.answer;
 };
+
 
 fetchAlerts();
