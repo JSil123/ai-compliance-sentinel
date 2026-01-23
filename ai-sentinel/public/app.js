@@ -55,6 +55,18 @@ alerts.forEach(alert => {
   if (title.includes("New Regulation")) {
     title = "🆕 " + title;
   }
+details.innerHTML = `
+  <p><strong>Alert Classification:</strong> Regulatory Compliance Risk</p>
+  <p><strong>Responsible Function:</strong> ${alert.owner}</p>
+  <p><strong>Summary:</strong> ${alert.description || 
+    "This alert was generated following an automated compliance assessment. Immediate review is recommended."}</p>
+  <p><strong>Regulatory Basis:</strong></p>
+  <ul>
+    ${alert.citations.map(c =>
+      `<li>${c.law} — ${c.article}</li>`
+    ).join("")}
+  </ul>
+`;
 
   const row = document.createElement("tr");
 
