@@ -1,16 +1,16 @@
 async function runAnalysis(db) {
-  console.log("🔍 Running compliance analysis...");
+  // Clear existing alerts (demo behavior)
+  await db.exec(`DELETE FROM alerts`);
 
-  // Clear old alerts
-  await db.run("DELETE FROM alerts");
+  const now = new Date().toISOString();
 
   const alerts = [
     {
-      type: "Regulatory Risk",
+      type: "REGULATORY",
       severity: "HIGH",
       message:
-        "New regulatory obligations identified under the EU AI Act requiring documented human oversight for high-risk AI systems.",
-      source: "EU AI Act",
+        "New high-risk AI obligations detected under the EU AI Act. Human oversight controls must be verified.",
+      source: "EU AI Act – Article 14",
       status: "OPEN",
       recommended_owner: "Legal",
       jurisdiction: "EU",
@@ -20,15 +20,14 @@ async function runAnalysis(db) {
           article: "Article 14",
           url: "https://example.com/eu-ai-act"
         }
-      ]),
-      title: "New Regulation Detected: EU AI Act Oversight Requirements"
+      ])
     },
     {
-      type: "Security Control Gap",
+      type: "DATA_GOVERNANCE",
       severity: "MEDIUM",
       message:
-        "AI system training data handling procedures may not meet internal governance and security review standards.",
-      source: "Internal Policy",
+        "Use of patient data for AI training requires validation of consent and data minimization controls.",
+      source: "Internal Policy Review",
       status: "OPEN",
       recommended_owner: "Security",
       jurisdiction: "US",
@@ -37,16 +36,24 @@ async function runAnalysis(db) {
           policy: "AI Governance Policy",
           control: "AI-GOV-01"
         }
-      ]),
-      title: "AI Training Data Governance Review Required"
+      ])
     }
   ];
 
   for (const a of alerts) {
     await db.run(
       `
-      INSERT INTO alerts
-      (type, severity, message, source, status, recommended_owner, jurisdiction, citations, title)
+      INSERT INTO alerts (
+        type,
+        severity,
+        message,
+        source,
+        status,
+        recommended_owner,
+        jurisdiction,
+        citations,
+        created_at
+      )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       [
@@ -58,12 +65,10 @@ async function runAnalysis(db) {
         a.recommended_owner,
         a.jurisdiction,
         a.citations,
-        a.title
+        now
       ]
     );
   }
-
-  console.log(`✅ ${alerts.length} compliance alerts generated`);
 }
 
 module.exports = { runAnalysis };
