@@ -2,124 +2,199 @@ const express = require("express");
 const path = require("path");
 const { getDb } = require("./db");
 const { runAnalysis } = require("./analyzer");
-const sqlite3 = require("sqlite3").verbose();
-const db = new sqlite3.Database("./compliance.db");
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// Health
-app.get("/api/health", (req, res) => res.json({ ok: true }));
-
-// Run analysis (generate alerts)
-app.post("/api/analyze", async (req, res) => {
-  const db = await getDb();
-  await runAnalysis(db);
-  await db.close();
-  res.json({ ok: true, message: "Analysis complete. Alerts refreshed." });
+/**
+ * Health check
+ */
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true, service: "AI Compliance Sentinel" });
 });
 
-// List alerts
+/**
+ * Run compliance analysis
+ * Generates alerts based on mock laws + policies
+ */
+app.post("/api/analyze", async (req, res) => {
+  try {
+    const db = await getDb();
+    await runAnalysis(db);
+    await db.close();
+
+    res.json({
+      ok: true,
+      message: "Analysis complete. Compliance alerts refreshed."
+    });
+  } catch (err) {
+    console.error("❌ Analysis failed:", err);
+    res.status(500).json({
+      ok: false,
+      error: "Compliance analysis failed"
+    });
+  }
+});
+
+/**
+ * List compliance alerts
+ */
 app.get("/api/alerts", async (req, res) => {
   const { status, owner, jurisdiction } = req.query;
 
-  const db = await getDb();
-  const where = [];
-  const params = [];
+  try {
+    const db = await getDb();
 
-  if (status) { where.push("status=?"); params.push(status); }
-  if (owner) { where.push("recommended_owner=?"); params.push(owner); }
-  if (jurisdiction) { where.push("jurisdiction=?"); params.push(jurisdiction); }
+    const where = [];
+    const params = [];
 
-  const sql = `
-    SELECT * FROM alerts
-    ${where.length ? "WHERE " + where.join(" AND ") : ""}
-    ORDER BY created_at DESC
-  `;
+    if (status) {
+      where.push("status = ?");
+      params.push(status);
+    }
+    if (owner) {
+      where.push("recommended_owner = ?");
+      params.push(owner);
+    }
+    if (jurisdiction) {
+      where.push("jurisdiction = ?");
+      params.push(jurisdiction);
+    }
 
-  const rows = await db.all(sql, params);
-  await db.close();
-  res.json(rows.map(r => ({ ...r, citations: JSON.parse(r.citations) })));
+    const sql = `
+      SELECT *
+      FROM alerts
+      ${where.length ? "WHERE " + where.join(" AND ") : ""}
+      ORDER BY created_at DESC
+    `;
+
+    const rows = await db.all(sql, params);
+    await db.close();
+
+    res.json(
+      rows.map(r => ({
+        ...r,
+        citations: r.citations ? JSON.parse(r.citations) : []
+      }))
+    );
+  } catch (err) {
+    console.error("❌ Failed to fetch alerts:", err);
+    res.status(500).json({ ok: false, error: "Failed to fetch alerts" });
+  }
 });
 
-// "Ask the compliance brain" (simple DB-grounded answer with citations)
+/**
+ * Ask the Compliance Brain
+ * Advisory-only, citation-backed guidance
+ */
 app.post("/api/ask", async (req, res) => {
   const { question } = req.body || {};
+
   if (!question || typeof question !== "string") {
-    return res.status(400).json({ ok: false, error: "Question is required." });
+    return res.status(400).json({
+      ok: false,
+      error: "Question is required"
+    });
   }
 
-  const q = question.toLowerCase();
-  const db = await getDb();
+  try {
+    const q = question.toLowerCase();
+    const db = await getDb();
 
-  // Naive retrieval: match keywords in requirements + policy_controls
-  const reqs = await db.all(`
-    SELECT r.requirement_code, r.title, r.text, r.keywords,
-           l.name as law_name, l.jurisdiction, l.source_url
-    FROM requirements r
-    JOIN laws l ON l.id = r.law_id
-  `);
+    const requirements = await db.all(`
+      SELECT r.requirement_code, r.title, r.text, r.keywords,
+             l.name AS law_name, l.jurisdiction, l.source_url
+      FROM requirements r
+      JOIN laws l ON l.id = r.law_id
+    `);
 
-  const policies = await db.all(`
-    SELECT p.name as policy_name, p.policy_area, p.jurisdiction_scope, p.version,
-           pc.control_code, pc.title as control_title, pc.text as control_text, pc.keywords
-    FROM policy_controls pc
-    JOIN policies p ON p.id = pc.policy_id
-  `);
+    const policies = await db.all(`
+      SELECT p.name AS policy_name, p.version,
+             pc.control_code, pc.title AS control_title,
+             pc.text AS control_text, pc.keywords
+      FROM policy_controls pc
+      JOIN policies p ON p.id = pc.policy_id
+    `);
 
-  function scoreRow(keywords) {
-    const keys = keywords.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
-    let score = 0;
-    for (const k of keys) if (q.includes(k)) score += 2;
-    return score;
+    await db.close();
+
+    const score = (keywords = "") =>
+      keywords
+        .split(",")
+        .map(k => k.trim().toLowerCase())
+        .filter(k => k && q.includes(k))
+        .length * 2;
+
+    const rankedReqs = requirements
+      .map(r => ({ ...r, score: score(r.keywords) }))
+      .filter(r => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    const rankedPolicies = policies
+      .map(p => ({ ...p, score: score(p.keywords) }))
+      .filter(p => p.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    let answer =
+      "Advisory (human review required): Based on your question, the following requirements and internal controls are most relevant.\n\n";
+
+    const citations = [];
+
+    if (rankedReqs.length) {
+      answer += "Relevant external requirements:\n";
+      rankedReqs.forEach(r => {
+        citations.push({
+          type: "law",
+          title: r.law_name,
+          jurisdiction: r.jurisdiction,
+          requirement: r.requirement_code,
+          url: r.source_url
+        });
+        answer += `• [${r.requirement_code}] ${r.title} (${r.law_name}, ${r.jurisdiction})\n`;
+      });
+    }
+
+    if (rankedPolicies.length) {
+      answer += "\nRelevant internal policy controls:\n";
+      rankedPolicies.forEach(p => {
+        citations.push({
+          type: "policy",
+          title: p.policy_name,
+          control: p.control_code,
+          version: p.version
+        });
+        answer += `• ${p.policy_name} (${p.control_code})\n`;
+      });
+    }
+
+    if (!citations.length) {
+      answer =
+        "Advisory (human review required): No strong match was found in the current mock knowledge base. In production, this would trigger a compliance escalation workflow.";
+    } else {
+      answer +=
+        "\nSuggested next steps:\n" +
+        "• Confirm jurisdiction and data classification.\n" +
+        "• Ensure human oversight and logging for high-risk AI use.\n" +
+        "• Validate approved environments and data protection controls.\n";
+    }
+
+    res.json({ ok: true, answer, citations });
+  } catch (err) {
+    console.error("❌ Ask failed:", err);
+    res.status(500).json({ ok: false, error: "Failed to process question" });
   }
-
-  const rankedReqs = reqs
-    .map(r => ({ ...r, score: scoreRow(r.keywords) }))
-    .sort((a,b) => b.score - a.score)
-    .slice(0, 3);
-
-  const rankedPolicies = policies
-    .map(p => ({ ...p, score: scoreRow(p.keywords) }))
-    .sort((a,b) => b.score - a.score)
-    .slice(0, 3);
-
-  await db.close();
-
-  // Construct an "advisory only" answer
-  const citations = [];
-
-  let answer = `Advisory (human review required): Based on your question, here are the most relevant requirements and internal controls.\n\n`;
-
-  answer += `Relevant external requirements:\n`;
-  for (const r of rankedReqs.filter(x => x.score > 0)) {
-    citations.push({ type: "law", title: r.law_name, jurisdiction: r.jurisdiction, url: r.source_url, requirement: r.requirement_code });
-    answer += `• [${r.requirement_code}] ${r.title} (${r.law_name}, ${r.jurisdiction}): ${r.text}\n`;
-  }
-
-  answer += `\nRelevant internal policy controls:\n`;
-  for (const p of rankedPolicies.filter(x => x.score > 0)) {
-    citations.push({ type: "policy", title: p.policy_name, control: p.control_code, version: p.version });
-    answer += `• ${p.policy_name} (${p.control_code}): ${p.control_text}\n`;
-  }
-
-  if (citations.length === 0) {
-    answer = `Advisory (human review required): I could not find a strong match in the current mock knowledge base. In a production version, this would trigger a compliance escalation workflow to HR/Legal/Security for review.`;
-  } else {
-    answer += `\nSuggested next steps:\n`;
-    answer += `• Confirm jurisdiction (EU/US/Global) and data type (PHI/PII/Confidential).\n`;
-    answer += `• If high-stakes healthcare decisions are involved, ensure human oversight, logging/traceability, and access controls.\n`;
-    answer += `• If restricted data is used with AI tools, validate approved environments and DLP requirements.\n`;
-  }
-
-  res.json({ ok: true, answer, citations });
 });
 
-const PORT = process.env.PORT || 3000;
+/**
+ * Start server
+ */
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`✅ AI Compliance Sentinel running at http://localhost:${PORT}`);
-  console.log(`   Seed DB: npm run seed`);
-  console.log(`   Run analysis: POST /api/analyze (button in UI)`);
+  console.log("🧠 Compliance Brain initialized");
+  console.log("📚 Regulatory knowledge ready");
+  console.log("🛡 Governance guardrails active");
 });
-
