@@ -1,6 +1,26 @@
 /* ===============================
    BUTTON INTERACTION FEEDBACK
    =============================== */
+button {
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  opacity: 0.95;
+}
+
+button:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 button {
   cursor: pointer;
@@ -58,3 +78,4 @@ button#askBtn:hover,
 button#refresh:hover {
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
 }
+
