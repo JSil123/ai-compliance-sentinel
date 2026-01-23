@@ -48,21 +48,29 @@ async function loadAlerts() {
   const tbody = qs("alertsTable").querySelector("tbody");
   tbody.innerHTML = "";
 
-  alerts.forEach(a => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${new Date(a.created_at).toLocaleString()}</td>
-      <td>${a.recommended_owner}</td>
-      <td>${a.jurisdiction}</td>
-      <td>${a.severity}</td>
-      <td>${a.risk_score}</td>
-      <td class="titleCell">${a.title}</td>
-      <td>${a.status}</td>
-    `;
-    tr.addEventListener("click", () => showAlertDetails(a));
-    tbody.appendChild(tr);
-  });
-}
+alerts.forEach(alert => {
+  let title = alert.title || "Untitled Alert";
+
+  // 👇 PUT YOUR CODE HERE
+  if (title.includes("New Regulation")) {
+    title = "🆕 " + title;
+  }
+
+  const row = document.createElement("tr");
+
+  row.innerHTML = `
+    <td>${alert.created_at}</td>
+    <td>${alert.owner}</td>
+    <td>${alert.jurisdiction}</td>
+    <td>${alert.severity}</td>
+    <td>${alert.risk || "—"}</td>
+    <td><strong>${title}</strong></td>
+    <td>${alert.status}</td>
+  `;
+
+  tableBody.appendChild(row);
+});
+
 
 function showAlertDetails(a) {
   const div = qs("alertDetails");
