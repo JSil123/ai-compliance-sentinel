@@ -1,14 +1,12 @@
-const { getDb } = require("./db");
-
-// Force DB init on startup (important for Render)
-(async () => {
-  await getDb();
-})();
-
 const express = require("express");
 const path = require("path");
 const { getDb } = require("./db");
 const { runAnalysis } = require("./analyzer");
+
+// Force DB init on startup (Render-safe)
+(async () => {
+  await getDb();
+})();
 
 const app = express();
 app.use(express.json());
@@ -23,13 +21,11 @@ app.get("/api/health", (req, res) => {
 
 /**
  * Run compliance analysis
- * Generates alerts based on mock laws + policies
  */
 app.post("/api/analyze", async (req, res) => {
   try {
     const db = await getDb();
     await runAnalysis(db);
-    await db.close();
 
     res.json({
       ok: true,
@@ -56,18 +52,9 @@ app.get("/api/alerts", async (req, res) => {
     const where = [];
     const params = [];
 
-    if (status) {
-      where.push("status = ?");
-      params.push(status);
-    }
-    if (owner) {
-      where.push("recommended_owner = ?");
-      params.push(owner);
-    }
-    if (jurisdiction) {
-      where.push("jurisdiction = ?");
-      params.push(jurisdiction);
-    }
+    if (status) { where.push("status = ?"); params.push(status); }
+    if (owner) { where.push("recommended_owner = ?"); params.push(owner); }
+    if (jurisdiction) { where.push("jurisdiction = ?"); params.push(jurisdiction); }
 
     const sql = `
       SELECT *
@@ -77,7 +64,6 @@ app.get("/api/alerts", async (req, res) => {
     `;
 
     const rows = await db.all(sql, params);
-    await db.close();
 
     res.json(
       rows.map(r => ({
@@ -93,16 +79,12 @@ app.get("/api/alerts", async (req, res) => {
 
 /**
  * Ask the Compliance Brain
- * Advisory-only, citation-backed guidance
  */
 app.post("/api/ask", async (req, res) => {
   const { question } = req.body || {};
 
   if (!question || typeof question !== "string") {
-    return res.status(400).json({
-      ok: false,
-      error: "Question is required"
-    });
+    return res.status(400).json({ ok: false, error: "Question is required" });
   }
 
   try {
@@ -123,8 +105,6 @@ app.post("/api/ask", async (req, res) => {
       FROM policy_controls pc
       JOIN policies p ON p.id = pc.policy_id
     `);
-
-    await db.close();
 
     const score = (keywords = "") =>
       keywords
@@ -150,43 +130,26 @@ app.post("/api/ask", async (req, res) => {
 
     const citations = [];
 
-    if (rankedReqs.length) {
-      answer += "Relevant external requirements:\n";
-      rankedReqs.forEach(r => {
-        citations.push({
-          type: "law",
-          title: r.law_name,
-          jurisdiction: r.jurisdiction,
-          requirement: r.requirement_code,
-          url: r.source_url
-        });
-        answer += `• [${r.requirement_code}] ${r.title} (${r.law_name}, ${r.jurisdiction})\n`;
+    rankedReqs.forEach(r => {
+      citations.push({
+        type: "law",
+        title: r.law_name,
+        jurisdiction: r.jurisdiction,
+        requirement: r.requirement_code,
+        url: r.source_url
       });
-    }
+      answer += `• [${r.requirement_code}] ${r.title} (${r.law_name})\n`;
+    });
 
-    if (rankedPolicies.length) {
-      answer += "\nRelevant internal policy controls:\n";
-      rankedPolicies.forEach(p => {
-        citations.push({
-          type: "policy",
-          title: p.policy_name,
-          control: p.control_code,
-          version: p.version
-        });
-        answer += `• ${p.policy_name} (${p.control_code})\n`;
+    rankedPolicies.forEach(p => {
+      citations.push({
+        type: "policy",
+        title: p.policy_name,
+        control: p.control_code,
+        version: p.version
       });
-    }
-
-    if (!citations.length) {
-      answer =
-        "Advisory (human review required): No strong match was found in the current mock knowledge base. In production, this would trigger a compliance escalation workflow.";
-    } else {
-      answer +=
-        "\nSuggested next steps:\n" +
-        "• Confirm jurisdiction and data classification.\n" +
-        "• Ensure human oversight and logging for high-risk AI use.\n" +
-        "• Validate approved environments and data protection controls.\n";
-    }
+      answer += `• ${p.policy_name} (${p.control_code})\n`;
+    });
 
     res.json({ ok: true, answer, citations });
   } catch (err) {
@@ -200,9 +163,5 @@ app.post("/api/ask", async (req, res) => {
  */
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`✅ AI Compliance Sentinel running at http://localhost:${PORT}`);
-  console.log("🧠 Compliance Brain initialized");
-  console.log("📚 Regulatory knowledge ready");
-  console.log("🛡 Governance guardrails active");
+  console.log(`✅ AI Compliance Sentinel running on port ${PORT}`);
 });
-
