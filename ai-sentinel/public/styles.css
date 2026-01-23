@@ -1,3 +1,87 @@
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f5f7fb;
+  margin: 0;
+  padding: 30px;
+  color: #111;
+}
+
+header {
+  margin-bottom: 20px;
+}
+
+.subtitle {
+  color: #555;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 25px;
+}
+
+.filters select {
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.panel {
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th, td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+tr:hover {
+  background: #f1f5ff;
+  cursor: pointer;
+}
+
+.details {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+.hidden {
+  display: none;
+}
+
+textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.answer {
+  background: #0b1220;
+  color: #e5e7eb;
+  padding: 16px;
+  border-radius: 12px;
+  min-height: 120px;
+  margin-top: 12px;
+}
 /* ===============================
    BUTTON INTERACTION FEEDBACK
    =============================== */
@@ -55,3 +139,4 @@ button:disabled {
 #refresh:hover {
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
 }
+
