@@ -1,11 +1,14 @@
-import sqlite3 from "sqlite3";
-import { open } from "sqlite";
+const path = require("path");
+const sqlite3 = require("sqlite3");
+const { open } = require("sqlite");
 
-export function getDb() {
+const DB_PATH = path.join(__dirname, "sentinel.db");
+
+async function getDb() {
   return open({
-    filename: "./compliance.db",
+    filename: DB_PATH,
     driver: sqlite3.Database
   });
 }
 
-
+module.exports = { getDb, DB_PATH };
