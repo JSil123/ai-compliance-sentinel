@@ -1,83 +1,69 @@
-/**
- * analyzer.js
- * Generates mock compliance alerts
- */
-
 async function runAnalysis(db) {
-  // Clear old alerts
-  await db.exec(`DELETE FROM alerts`);
+  console.log("🔍 Running compliance analysis...");
 
-  const now = new Date().toISOString();
+  // Clear old alerts
+  await db.run("DELETE FROM alerts");
 
   const alerts = [
     {
-      title: "New Regulation Detected: EU AI Act Update",
-      type: "Regulatory Change",
-      description:
-        "A newly enacted regulatory requirement has been identified. Immediate legal review is required to assess applicability, enforcement timelines, and operational impact.",
+      type: "Regulatory Risk",
       severity: "HIGH",
-      risk: "Regulatory Non-Compliance",
+      message:
+        "New regulatory obligations identified under the EU AI Act requiring documented human oversight for high-risk AI systems.",
+      source: "EU AI Act",
       status: "OPEN",
-      jurisdiction: "EU",
       recommended_owner: "Legal",
+      jurisdiction: "EU",
       citations: JSON.stringify([
         {
           law: "EU AI Act",
           article: "Article 14",
           url: "https://example.com/eu-ai-act"
         }
-      ])
+      ]),
+      title: "New Regulation Detected: EU AI Act Oversight Requirements"
     },
     {
-      title: "AI Training Data Governance Gap",
-      type: "Policy Gap",
-      description:
-        "Current AI model training practices may involve regulated personal data without sufficient documented oversight, approval, or audit controls.",
+      type: "Security Control Gap",
       severity: "MEDIUM",
-      risk: "Data Protection",
+      message:
+        "AI system training data handling procedures may not meet internal governance and security review standards.",
+      source: "Internal Policy",
       status: "OPEN",
-      jurisdiction: "US",
       recommended_owner: "Security",
+      jurisdiction: "US",
       citations: JSON.stringify([
         {
-          law: "HIPAA",
-          article: "§164.308",
-          url: "https://example.com/hipaa"
+          policy: "AI Governance Policy",
+          control: "AI-GOV-01"
         }
-      ])
+      ]),
+      title: "AI Training Data Governance Review Required"
     }
   ];
 
   for (const a of alerts) {
     await db.run(
       `
-      INSERT INTO alerts (
-        title,
-        type,
-        description,
-        severity,
-        risk,
-        status,
-        jurisdiction,
-        recommended_owner,
-        citations,
-        created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
+      INSERT INTO alerts
+      (type, severity, message, source, status, recommended_owner, jurisdiction, citations, title)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
       [
-        a.title,
         a.type,
-        a.description,
         a.severity,
-        a.risk,
+        a.message,
+        a.source,
         a.status,
-        a.jurisdiction,
         a.recommended_owner,
+        a.jurisdiction,
         a.citations,
-        now
+        a.title
       ]
     );
   }
+
+  console.log(`✅ ${alerts.length} compliance alerts generated`);
 }
 
 module.exports = { runAnalysis };
