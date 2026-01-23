@@ -10,6 +10,39 @@ async function runAnalysis(db) {
       citations TEXT
     )
   `);
+await db.run(`DELETE FROM alerts`);
+
+const alerts = [
+  {
+    type: "New Regulation Detected",
+    severity: "High",
+    message: "New EU AI Act obligations impacting healthcare AI systems.",
+    jurisdiction: "EU",
+    owner: "Legal"
+  },
+  {
+    type: "Data Retention Risk",
+    severity: "Medium",
+    message: "Training data retention exceeds internal policy limits.",
+    jurisdiction: "US",
+    owner: "Security"
+  },
+  {
+    type: "Model Transparency Gap",
+    severity: "High",
+    message: "Insufficient explainability documentation for automated decisions.",
+    jurisdiction: "EU",
+    owner: "DataGov"
+  }
+];
+
+for (const a of alerts) {
+  await db.run(
+    `INSERT INTO alerts (type, severity, message, jurisdiction, recommended_owner, created_at)
+     VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+    [a.type, a.severity, a.message, a.jurisdiction, a.owner]
+  );
+}
 
   // Clear old alerts for clean demo runs
   await db.exec(`DELETE FROM alerts`);
@@ -71,3 +104,4 @@ async function runAnalysis(db) {
 }
 
 module.exports = { runAnalysis };
+
