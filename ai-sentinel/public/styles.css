@@ -82,10 +82,16 @@ textarea {
   min-height: 120px;
   margin-top: 12px;
 }
+
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 /* ===============================
    BUTTON INTERACTION FEEDBACK
    =============================== */
-
 button {
   cursor: pointer;
   border: none;
@@ -99,20 +105,20 @@ button {
     opacity 0.2s ease;
 }
 
-/* Hover state */
+/* Hover */
 button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   filter: brightness(1.05);
 }
 
-/* Active (clicked) state */
+/* Active */
 button:active {
   transform: translateY(1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
-/* Disabled state */
+/* Disabled */
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -127,16 +133,10 @@ button:disabled {
   color: white;
 }
 
-/* Refresh button */
+/* Refresh */
 #refresh {
   background: #2563eb;
   color: white;
 }
 
-/* Hover override for all action buttons */
-#runAnalysis:hover,
-#askBtn:hover,
-#refresh:hover {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-}
 
