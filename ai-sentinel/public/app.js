@@ -1,9 +1,6 @@
 const alertsTableBody = document.querySelector("#alertsTable tbody");
 const alertDetails = document.getElementById("alertDetails");
 
-/**
- * Load alerts
- */
 async function fetchAlerts() {
   const res = await fetch("/api/alerts");
   const alerts = await res.json();
@@ -13,7 +10,7 @@ async function fetchAlerts() {
   alerts.forEach(alert => {
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td>${new Date(alert.created).toLocaleDateString()}</td>
+      <td>${new Date().toLocaleDateString()}</td>
       <td>${alert.owner}</td>
       <td>${alert.jurisdiction}</td>
       <td>${alert.severity}</td>
@@ -27,9 +24,6 @@ async function fetchAlerts() {
   });
 }
 
-/**
- * Alert details panel
- */
 function showAlertDetails(alert) {
   alertDetails.classList.remove("hidden");
   alertDetails.innerHTML = `
@@ -39,44 +33,29 @@ function showAlertDetails(alert) {
     <p><strong>Jurisdiction:</strong> ${alert.jurisdiction}</p>
     <h4>Sources</h4>
     <ul>
-      ${alert.citations
-        .map(c => `<li>${c.law}: ${c.article}</li>`)
-        .join("")}
+      ${(alert.citations || []).map(c =>
+        `<li>${c.law}: ${c.article}</li>`
+      ).join("")}
     </ul>
   `;
 }
 
-/**
- * Run analysis button
- */
 document.getElementById("runAnalysis").onclick = async () => {
   await fetch("/api/analyze", { method: "POST" });
-  await fetchAlerts();
+  fetchAlerts();
 };
 
-/**
- * Refresh button
- */
 document.getElementById("refresh").onclick = fetchAlerts;
 
-/**
- * Ask Compliance Brain
- */
 document.getElementById("askBtn").onclick = async () => {
   const question = document.getElementById("question").value;
-
   const res = await fetch("/api/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question })
   });
-
   const data = await res.json();
-  document.getElementById("answerBox").textContent =
-    data.answer || "No response.";
+  document.getElementById("answerBox").textContent = data.answer;
 };
 
-/**
- * Initial load
- */
 fetchAlerts();
