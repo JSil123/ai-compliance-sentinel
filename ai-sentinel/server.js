@@ -3,19 +3,15 @@ const path = require("path");
 const { getDb } = require("./db");
 const { runAnalysis } = require("./analyzer");
 
-// Force DB init on startup (Render-safe)
-(async () => {
-  await getDb();
-})();
-(async () => {
-  const db = await getDb();
-  const { runAnalysis } = require("./analyzer");
-  await runAnalysis(db);
-})();
-
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
+
+// Initialize DB on startup (tables + seed)
+(async () => {
+  await getDb();
+  console.log("📦 Database initialized");
+})();
 
 /**
  * Health check
@@ -25,7 +21,7 @@ app.get("/api/health", (req, res) => {
 });
 
 /**
- * Run compliance analysis
+ * Run compliance analysis (button-triggered)
  */
 app.post("/api/analyze", async (req, res) => {
   try {
@@ -34,19 +30,16 @@ app.post("/api/analyze", async (req, res) => {
 
     res.json({
       ok: true,
-      message: "Analysis complete. Compliance alerts refreshed."
+      message: "Compliance analysis completed"
     });
   } catch (err) {
     console.error("❌ Analysis failed:", err);
-    res.status(500).json({
-      ok: false,
-      error: "Compliance analysis failed"
-    });
+    res.status(500).json({ ok: false, error: "Analysis failed" });
   }
 });
 
 /**
- * List compliance alerts
+ * Fetch alerts
  */
 app.get("/api/alerts", async (req, res) => {
   const { status, owner, jurisdiction } = req.query;
@@ -57,9 +50,18 @@ app.get("/api/alerts", async (req, res) => {
     const where = [];
     const params = [];
 
-    if (status) { where.push("status = ?"); params.push(status); }
-    if (owner) { where.push("recommended_owner = ?"); params.push(owner); }
-    if (jurisdiction) { where.push("jurisdiction = ?"); params.push(jurisdiction); }
+    if (status && status !== "All") {
+      where.push("status = ?");
+      params.push(status);
+    }
+    if (owner && owner !== "All") {
+      where.push("recommended_owner = ?");
+      params.push(owner);
+    }
+    if (jurisdiction && jurisdiction !== "All") {
+      where.push("jurisdiction = ?");
+      params.push(jurisdiction);
+    }
 
     const sql = `
       SELECT *
@@ -71,9 +73,17 @@ app.get("/api/alerts", async (req, res) => {
     const rows = await db.all(sql, params);
 
     res.json(
-      rows.map(r => ({
-        ...r,
-        citations: r.citations ? JSON.parse(r.citations) : []
+      rows.map(alert => ({
+        id: alert.id,
+        created_at: alert.created_at,
+        owner: alert.recommended_owner,
+        jurisdiction: alert.jurisdiction,
+        severity: alert.severity,
+        risk: alert.severity,
+        status: alert.status,
+        title: alert.type || "Regulatory Alert",
+        description: alert.message,
+        citations: alert.citations ? JSON.parse(alert.citations) : []
       }))
     );
   } catch (err) {
@@ -88,8 +98,8 @@ app.get("/api/alerts", async (req, res) => {
 app.post("/api/ask", async (req, res) => {
   const { question } = req.body || {};
 
-  if (!question || typeof question !== "string") {
-    return res.status(400).json({ ok: false, error: "Question is required" });
+  if (!question) {
+    return res.status(400).json({ ok: false, error: "Question required" });
   }
 
   try {
@@ -97,7 +107,7 @@ app.post("/api/ask", async (req, res) => {
     const db = await getDb();
 
     const requirements = await db.all(`
-      SELECT r.requirement_code, r.title, r.text, r.keywords,
+      SELECT r.requirement_code, r.title, r.keywords,
              l.name AS law_name, l.jurisdiction, l.source_url
       FROM requirements r
       JOIN laws l ON l.id = r.law_id
@@ -105,61 +115,52 @@ app.post("/api/ask", async (req, res) => {
 
     const policies = await db.all(`
       SELECT p.name AS policy_name, p.version,
-             pc.control_code, pc.title AS control_title,
-             pc.text AS control_text, pc.keywords
+             pc.control_code, pc.keywords
       FROM policy_controls pc
       JOIN policies p ON p.id = pc.policy_id
     `);
 
-    const score = (keywords = "") =>
+    const score = keywords =>
       keywords
-        .split(",")
-        .map(k => k.trim().toLowerCase())
-        .filter(k => k && q.includes(k))
-        .length * 2;
-
-    const rankedReqs = requirements
-      .map(r => ({ ...r, score: score(r.keywords) }))
-      .filter(r => r.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3);
-
-    const rankedPolicies = policies
-      .map(p => ({ ...p, score: score(p.keywords) }))
-      .filter(p => p.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3);
-
-    let answer =
-      "Advisory (human review required): Based on your question, the following requirements and internal controls are most relevant.\n\n";
+        ?.split(",")
+        .filter(k => q.includes(k.trim().toLowerCase())).length || 0;
 
     const citations = [];
 
-    rankedReqs.forEach(r => {
-      citations.push({
-        type: "law",
-        title: r.law_name,
-        jurisdiction: r.jurisdiction,
-        requirement: r.requirement_code,
-        url: r.source_url
-      });
-      answer += `• [${r.requirement_code}] ${r.title} (${r.law_name})\n`;
-    });
+    requirements
+      .filter(r => score(r.keywords))
+      .slice(0, 2)
+      .forEach(r =>
+        citations.push({
+          type: "law",
+          title: r.law_name,
+          requirement: r.requirement_code,
+          jurisdiction: r.jurisdiction,
+          url: r.source_url
+        })
+      );
 
-    rankedPolicies.forEach(p => {
-      citations.push({
-        type: "policy",
-        title: p.policy_name,
-        control: p.control_code,
-        version: p.version
-      });
-      answer += `• ${p.policy_name} (${p.control_code})\n`;
-    });
+    policies
+      .filter(p => score(p.keywords))
+      .slice(0, 2)
+      .forEach(p =>
+        citations.push({
+          type: "policy",
+          title: p.policy_name,
+          control: p.control_code,
+          version: p.version
+        })
+      );
 
-    res.json({ ok: true, answer, citations });
+    res.json({
+      ok: true,
+      answer:
+        "Advisory (human review required): This question involves regulated data usage. Review applicable laws and internal controls.",
+      citations
+    });
   } catch (err) {
-    console.error("❌ Ask failed:", err);
-    res.status(500).json({ ok: false, error: "Failed to process question" });
+    console.error("Ask failed:", err);
+    res.status(500).json({ ok: false, error: "Ask failed" });
   }
 });
 
@@ -170,4 +171,3 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`✅ AI Compliance Sentinel running on port ${PORT}`);
 });
-
