@@ -95,6 +95,39 @@ async function seed() {
       summary: "Defines requirements for high-risk AI systems including documentation, human oversight, logging, and risk management."
     },
     {
+  type: "Model Training Risk",
+  severity: "High",
+  message: "Training data includes sensitive biometric identifiers.",
+  jurisdiction: "EU",
+  recommended_owner: "Security",
+  status: "OPEN",
+  citations: JSON.stringify([
+    { law: "GDPR", article: "Article 9" }
+  ])
+},
+{
+  type: "Workforce Impact Assessment Required",
+  severity: "Medium",
+  message: "AI system may impact hiring or employee evaluation.",
+  jurisdiction: "US",
+  recommended_owner: "HR",
+  status: "ACKNOWLEDGED",
+  citations: JSON.stringify([
+    { law: "EEOC AI Guidance" }
+  ])
+},
+{
+  type: "Model Explainability Gap",
+  severity: "High",
+  message: "High-risk model lacks human-interpretable explanations.",
+  jurisdiction: "EU",
+  recommended_owner: "Legal",
+  status: "OPEN",
+  citations: JSON.stringify([
+    { law: "EU AI Act", article: "Article 13" }
+  ])
+},
+    {
       name: "GDPR (General Data Protection Regulation)",
       jurisdiction: "EU",
       category: "DATA_PRIVACY",
@@ -419,3 +452,4 @@ seed().catch((e) => {
   console.error("Seed failed:", e);
   process.exit(1);
 });
+
