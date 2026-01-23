@@ -13,7 +13,7 @@ app.use(express.static(path.join(__dirname, "public")));
 (async () => {
   const db = await getDb();
   await runAnalysis(db);
-  console.log("✅ Database initialized with demo alerts");
+  console.log("✅ Demo alerts loaded");
 })();
 
 /**
@@ -30,7 +30,7 @@ app.post("/api/analyze", async (req, res) => {
   try {
     const db = await getDb();
     await runAnalysis(db);
-    res.json({ ok: true });
+    res.json({ ok: true, message: "Analysis completed" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ ok: false });
@@ -38,105 +38,80 @@ app.post("/api/analyze", async (req, res) => {
 });
 
 /**
- * List alerts
+ * Alerts API
  */
 app.get("/api/alerts", async (req, res) => {
-  try {
-    const db = await getDb();
-    const rows = await db.all(`
-      SELECT *
-      FROM alerts
-      ORDER BY created_at DESC
-    `);
+  const db = await getDb();
+  const rows = await db.all(`SELECT * FROM alerts ORDER BY created_at DESC`);
 
-    res.json(rows.map(a => ({
-      title: a.type || "Regulatory Alert",
-      risk: a.severity || "Medium",
-      description: a.message,
-      jurisdiction: a.jurisdiction,
+  res.json(
+    rows.map(a => ({
+      created: a.created_at,
       owner: a.recommended_owner || "Legal",
-      status: a.status || "OPEN",
-      created_at: a.created_at,
+      jurisdiction: a.jurisdiction,
+      severity: a.severity,
+      risk: a.severity,
+      title: a.type,
+      status: "OPEN",
+      description: a.message,
       citations: a.citations ? JSON.parse(a.citations) : []
-    })));
-  } catch (err) {
-    console.error(err);
-    res.status(500).json([]);
-  }
+    }))
+  );
 });
 
 /**
- * Ask the Compliance Brain
+ * Ask the Compliance Brain (FAKE AI DEMO)
  */
 app.post("/api/ask", async (req, res) => {
-  const { question } = req.body;
+  const { question } = req.body || {};
 
   if (!question) {
-    return res.status(400).json({ ok: false, error: "Question required" });
-  }
-
-  const q = question.toLowerCase();
-  const db = await getDb();
-
-  const requirements = await db.all(`
-    SELECT r.requirement_code, r.title, r.keywords,
-           l.name AS law_name, l.jurisdiction
-    FROM requirements r
-    JOIN laws l ON l.id = r.law_id
-  `);
-
-  const policies = await db.all(`
-    SELECT p.name AS policy_name, pc.control_code, pc.keywords
-    FROM policy_controls pc
-    JOIN policies p ON p.id = pc.policy_id
-  `);
-
-  const score = (keywords = "") =>
-    keywords
-      .split(",")
-      .map(k => k.trim().toLowerCase())
-      .filter(k => q.includes(k)).length;
-
-  const rankedReqs = requirements
-    .map(r => ({ ...r, score: score(r.keywords) }))
-    .filter(r => r.score > 0);
-
-  const rankedPolicies = policies
-    .map(p => ({ ...p, score: score(p.keywords) }))
-    .filter(p => p.score > 0);
-
-  // 👇 THIS IS WHERE YOUR CODE GOES
-  if (!rankedReqs.length && !rankedPolicies.length) {
     return res.json({
       ok: true,
-      answer:
-        "No direct regulatory conflicts detected. However, a human compliance review is recommended.",
+      answer: "Please enter a compliance-related question.",
       citations: []
     });
   }
 
-  let answer =
-    "Advisory (human review required): The following obligations may apply:\n\n";
+  const q = question.toLowerCase();
 
-  const citations = [];
-
-  rankedReqs.forEach(r => {
-    answer += `• ${r.law_name} – ${r.title}\n`;
-    citations.push({
-      law: r.law_name,
-      jurisdiction: r.jurisdiction,
-      requirement: r.requirement_code
+  // 🔥 Demo logic (deterministic & reliable)
+  if (q.includes("phi") || q.includes("healthcare")) {
+    return res.json({
+      ok: true,
+      answer:
+        "Use of PHI for AI training is permitted only under strict safeguards. GDPR and the EU AI Act require data minimization, explicit legal basis, and documented human oversight.",
+      citations: [
+        { law: "GDPR", article: "Article 9" },
+        { law: "EU AI Act", article: "Article 14" }
+      ]
     });
-  });
+  }
 
-  rankedPolicies.forEach(p => {
-    answer += `• Internal Policy: ${p.policy_name} (${p.control_code})\n`;
-  });
+  if (q.includes("employee") || q.includes("hr")) {
+    return res.json({
+      ok: true,
+      answer:
+        "AI systems processing employee data must be transparent, auditable, and avoid automated decision-making without human review.",
+      citations: [
+        { law: "EU AI Act", article: "Article 22" }
+      ]
+    });
+  }
 
-  res.json({ ok: true, answer, citations });
+  // 🔴 THIS is where your snippet belongs
+  return res.json({
+    ok: true,
+    answer:
+      "No direct regulatory conflicts detected. However, a human compliance review is recommended.",
+    citations: []
+  });
 });
 
+/**
+ * Start server
+ */
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () =>
-  console.log(`✅ Server running on port ${PORT}`)
+  console.log(`✅ AI Compliance Sentinel running on port ${PORT}`)
 );
