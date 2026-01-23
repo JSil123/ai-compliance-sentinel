@@ -1,13 +1,17 @@
 const sqlite3 = require("sqlite3");
 const { open } = require("sqlite");
 
+let dbInstance = null;
+
 async function getDb() {
+  if (dbInstance) return dbInstance;
+
   const db = await open({
     filename: "./compliance.db",
     driver: sqlite3.Database
   });
 
-  // 1️⃣ Create tables (always safe to run)
+  // 🔐 Create tables FIRST
   await db.exec(`
     CREATE TABLE IF NOT EXISTS alerts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,7 +59,7 @@ async function getDb() {
     );
   `);
 
-  // 2️⃣ Auto-seed mock data (Render-safe)
+  // 🌱 Seed data ONCE
   const row = await db.get(`SELECT COUNT(*) as count FROM laws`);
 
   if (row.count === 0) {
@@ -72,7 +76,7 @@ async function getDb() {
         1,
         'AI-OVS-01',
         'Human Oversight',
-        'High-risk AI systems must include meaningful human oversight.',
+        'High-risk AI systems must include human oversight.',
         'ai,human oversight,healthcare'
       )
     `);
@@ -88,14 +92,14 @@ async function getDb() {
         1,
         'AI-GOV-01',
         'Human Review',
-        'AI outputs must be reviewed by a qualified human prior to use.',
+        'AI outputs must be reviewed by a qualified human.',
         'ai,review,oversight'
       )
     `);
-
-    console.log("✅ Mock compliance data seeded");
   }
 
+  console.log("✅ Database ready");
+  dbInstance = db;
   return db;
 }
 
