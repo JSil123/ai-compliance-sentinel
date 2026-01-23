@@ -1,3 +1,10 @@
+const { getDb } = require("./db");
+
+// Force DB init on startup (important for Render)
+(async () => {
+  await getDb();
+})();
+
 const express = require("express");
 const path = require("path");
 const { getDb } = require("./db");
@@ -198,3 +205,4 @@ app.listen(PORT, () => {
   console.log("📚 Regulatory knowledge ready");
   console.log("🛡 Governance guardrails active");
 });
+
