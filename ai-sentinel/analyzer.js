@@ -87,9 +87,18 @@ for (const a of alerts) {
   for (const a of demoAlerts) {
     await db.run(
       `
-      INSERT INTO alerts
-      (created_at, type, severity, message, jurisdiction, citations)
-      VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO alerts (type, severity, message, jurisdiction, recommended_owner, citations)
+VALUES
+('Model Transparency Requirement', 'MEDIUM',
+ 'New disclosure obligations for AI model decision logic.',
+ 'EU', 'Legal',
+ '[{"law":"EU AI Act","article":"Article 13"}]'),
+
+('Data Retention Risk', 'HIGH',
+ 'Training data retention exceeds regulatory thresholds.',
+ 'US', 'Security',
+ '[{"law":"HIPAA","article":"164.308"}]')
+`);
     `,
       [
         now,
