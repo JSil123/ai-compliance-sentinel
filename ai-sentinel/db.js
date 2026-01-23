@@ -7,7 +7,7 @@ async function getDb() {
     driver: sqlite3.Database
   });
 
-  // 🔐 Core tables (created if missing)
+  // 1️⃣ Create tables (always safe to run)
   await db.exec(`
     CREATE TABLE IF NOT EXISTS alerts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,6 +54,47 @@ async function getDb() {
       keywords TEXT
     );
   `);
+
+  // 2️⃣ Auto-seed mock data (Render-safe)
+  const row = await db.get(`SELECT COUNT(*) as count FROM laws`);
+
+  if (row.count === 0) {
+    console.log("🌱 Seeding mock compliance data...");
+
+    await db.run(`
+      INSERT INTO laws (name, jurisdiction, source_url)
+      VALUES ('EU AI Act', 'EU', 'https://example.com/eu-ai-act')
+    `);
+
+    await db.run(`
+      INSERT INTO requirements (law_id, requirement_code, title, text, keywords)
+      VALUES (
+        1,
+        'AI-OVS-01',
+        'Human Oversight',
+        'High-risk AI systems must include meaningful human oversight.',
+        'ai,human oversight,healthcare'
+      )
+    `);
+
+    await db.run(`
+      INSERT INTO policies (name, version, jurisdiction_scope)
+      VALUES ('AI Governance Policy', '1.0', 'Global')
+    `);
+
+    await db.run(`
+      INSERT INTO policy_controls (policy_id, control_code, title, text, keywords)
+      VALUES (
+        1,
+        'AI-GOV-01',
+        'Human Review',
+        'AI outputs must be reviewed by a qualified human prior to use.',
+        'ai,review,oversight'
+      )
+    `);
+
+    console.log("✅ Mock compliance data seeded");
+  }
 
   return db;
 }
