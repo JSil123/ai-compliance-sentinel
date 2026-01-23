@@ -1,15 +1,47 @@
 async function runAnalysis(db) {
-  console.log("🔍 Running compliance analysis...");
+  console.log("Running compliance analysis...");
 
   // Clear previous alerts (demo behavior)
   await db.run(`DELETE FROM alerts`);
 
   // Insert mock alerts
  async function runAnalysis(db) {
-  console.log("🔍 Running compliance analysis...");
+  console.log("Running compliance analysis...");
 
   await db.run(`DELETE FROM alerts`);
-
+await db.run(`
+  INSERT INTO alerts (
+    created_at,
+    owner,
+    jurisdiction,
+    severity,
+    risk,
+    title,
+    status,
+    description,
+    citations,
+    recommended_owner
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`, [
+  new Date().toISOString(),
+  "Legal",
+  "EU",
+  "HIGH",
+  "Regulatory Change",
+  "New Regulation Detected: EU AI Act – Foundation Models",
+  "OPEN",
+  "A newly issued regulatory provision affecting general-purpose AI and foundation models has been detected. The organization must assess applicability, update governance controls, and document compliance posture.",
+  JSON.stringify([
+    {
+      law: "EU AI Act",
+      article: "Articles 52–55",
+      note: "New obligations for general-purpose AI and transparency",
+      url: "https://example.com/eu-ai-act"
+    }
+  ]),
+  "Legal"
+]);
+   
   await db.run(`
     INSERT INTO alerts (
       type,
@@ -70,3 +102,4 @@ async function runAnalysis(db) {
 }
 
 module.exports = { runAnalysis };
+
