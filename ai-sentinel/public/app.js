@@ -1,128 +1,76 @@
-async function postJSON(url, body) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body || {})
-  });
-  return res.json();
-}
+const alertsTableBody = document.querySelector("#alertsTable tbody");
+const alertDetails = document.getElementById("alertDetails");
 
-async function getJSON(url) {
-  const res = await fetch(url);
-  return res.json();
-}
+async function fetchAlerts() {
+  try {
+    const res = await fetch("/api/alerts");
+    const alerts = await res.json();
 
-function qs(id) { return document.getElementById(id); }
+    alertsTableBody.innerHTML = "";
 
-function renderCitations(citations) {
-  if (!citations || citations.length === 0) return "";
-  return citations.map(c => {
-    if (c.type === "law") {
-      return `<li><b>Law:</b> ${c.title} (${c.jurisdiction || ""}) — <a href="${c.url}" target="_blank">source</a> ${c.requirement ? `(${c.requirement})` : ""}</li>`;
-    }
-    if (c.type === "policy") {
-      return `<li><b>Policy:</b> ${c.title} — Control: ${c.control} (v${c.version})</li>`;
-    }
-    if (c.type === "artifact") {
-      return `<li><b>Artifact:</b> ${c.title} (${c.region}) last updated ${c.last_updated}</li>`;
-    }
-    if (c.type === "policy_control") {
-      return `<li><b>Policy Control Match:</b> ${c.title} — ${c.control} (match ${c.match}%)</li>`;
-    }
-    return `<li>${JSON.stringify(c)}</li>`;
-  }).join("");
-}
+    alerts.forEach(alert => {
+      const row = document.createElement("tr");
 
-async function loadAlerts() {
-  const status = qs("statusFilter").value;
-  const owner = qs("ownerFilter").value;
-  const jurisdiction = qs("jurisdictionFilter").value;
+      row.innerHTML = `
+        <td>${new Date().toLocaleDateString()}</td>
+        <td>${alert.owner || "Legal"}</td>
+        <td>${alert.jurisdiction || "GLOBAL"}</td>
+        <td>${alert.risk || "Medium"}</td>
+        <td>${alert.risk || "Medium"}</td>
+        <td>${alert.title}</td>
+        <td>OPEN</td>
+      `;
 
-  const params = new URLSearchParams();
-  if (status) params.set("status", status);
-  if (owner) params.set("owner", owner);
-  if (jurisdiction) params.set("jurisdiction", jurisdiction);
+      row.addEventListener("click", () => {
+        showAlertDetails(alert);
+      });
 
-  const alerts = await getJSON(`/api/alerts?${params.toString()}`);
-
-  const tbody = qs("alertsTable").querySelector("tbody");
-  tbody.innerHTML = "";
-
-alerts.forEach(alert => {
-  let title = alert.title || "Untitled Alert";
-
-  // 👇 PUT YOUR CODE HERE
-  if (title.includes("New Regulation")) {
-    title = "🆕 " + title;
+      alertsTableBody.appendChild(row);
+    });
+  } catch (err) {
+    console.error("❌ Failed to load alerts", err);
   }
-details.innerHTML = `
-  <p><strong>Alert Classification:</strong> Regulatory Compliance Risk</p>
-  <p><strong>Responsible Function:</strong> ${alert.owner}</p>
-  <p><strong>Summary:</strong> ${alert.description || 
-    "This alert was generated following an automated compliance assessment. Immediate review is recommended."}</p>
-  <p><strong>Regulatory Basis:</strong></p>
-  <ul>
-    ${alert.citations.map(c =>
-      `<li>${c.law} — ${c.article}</li>`
-    ).join("")}
-  </ul>
-`;
+}
 
-  const row = document.createElement("tr");
+function showAlertDetails(alert) {
+  alertDetails.classList.remove("hidden");
 
-  row.innerHTML = `
-    <td>${alert.created_at}</td>
-    <td>${alert.owner}</td>
-    <td>${alert.jurisdiction}</td>
-    <td>${alert.severity}</td>
-    <td>${alert.risk || "—"}</td>
-    <td><strong>${title}</strong></td>
-    <td>${alert.status}</td>
+  alertDetails.innerHTML = `
+    <h3>${alert.title}</h3>
+    <p><strong>Risk:</strong> ${alert.risk}</p>
+    <p>${alert.description}</p>
+    <p><strong>Jurisdiction:</strong> ${alert.jurisdiction}</p>
+    <h4>Sources</h4>
+    <ul>
+      ${(alert.citations || [])
+        .map(c => `<li>${c.law || c.title}: ${c.article || ""}</li>`)
+        .join("")}
+    </ul>
   `;
+}
 
-  tableBody.appendChild(row);
+// Run analysis button
+document.getElementById("runAnalysis").addEventListener("click", async () => {
+  await fetch("/api/analyze", { method: "POST" });
+  await fetchAlerts();
 });
 
+// Refresh button
+document.getElementById("refresh").addEventListener("click", fetchAlerts);
 
-function showAlertDetails(a) {
-  const div = qs("alertDetails");
-  div.classList.remove("hidden");
-  div.innerHTML = `
-    <h3>Alert Details</h3>
-    <p><b>Type:</b> ${a.alert_type}</p>
-    <p><b>Owner:</b> ${a.recommended_owner}</p>
-    <p><b>Description:</b> ${a.description}</p>
-    <h4>Citations</h4>
-    <ul>${renderCitations(a.citations)}</ul>
-  `;
-}
+// Ask the Compliance Brain
+document.getElementById("askBtn").addEventListener("click", async () => {
+  const question = document.getElementById("question").value;
 
-async function runAnalysis() {
-  qs("runAnalysis").disabled = true;
-  qs("runAnalysis").innerText = "Running...";
-  await postJSON("/api/analyze", {});
-  await loadAlerts();
-  qs("runAnalysis").innerText = "Run Compliance Analysis";
-  qs("runAnalysis").disabled = false;
-}
+  const res = await fetch("/api/ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question })
+  });
 
-async function ask() {
-  const question = qs("question").value.trim();
-  if (!question) return;
-
-  qs("answerBox").textContent = "Thinking...";
-  qs("citationsBox").innerHTML = "";
-
-  const data = await postJSON("/api/ask", { question });
-  qs("answerBox").textContent = data.answer || "No answer.";
-  qs("citationsBox").innerHTML = data.citations?.length
-    ? `<h4>Citations</h4><ul>${renderCitations(data.citations)}</ul>`
-    : "";
-}
-
-qs("runAnalysis").addEventListener("click", runAnalysis);
-qs("refresh").addEventListener("click", loadAlerts);
-qs("askBtn").addEventListener("click", ask);
+  const data = await res.json();
+  document.getElementById("answerBox").textContent = data.answer || "No answer.";
+});
 
 // Initial load
-loadAlerts();
+fetchAlerts();
