@@ -2,44 +2,46 @@ document.addEventListener("DOMContentLoaded", () => {
   const alertsTableBody = document.querySelector("#alertsTable tbody");
   const alertDetails = document.getElementById("alertDetails");
 
-  const runBtn = document.getElementById("runAnalysis");
-  const refreshBtn = document.getElementById("refresh");
-  const askBtn = document.getElementById("askBtn");
+  const statusFilter = document.getElementById("statusFilter");
+  const ownerFilter = document.getElementById("ownerFilter");
+  const jurisdictionFilter = document.getElementById("jurisdictionFilter");
+
+  const answerBox = document.getElementById("answerBox");
+  const citationsBox = document.getElementById("citationsBox");
 
   async function fetchAlerts() {
     try {
-      const res = await fetch("/api/alerts");
+      const params = new URLSearchParams();
+
+      if (statusFilter.value) params.append("status", statusFilter.value);
+      if (ownerFilter.value) params.append("owner", ownerFilter.value);
+      if (jurisdictionFilter.value)
+        params.append("jurisdiction", jurisdictionFilter.value);
+
+      const res = await fetch(`/api/alerts?${params.toString()}`);
       const alerts = await res.json();
 
       alertsTableBody.innerHTML = "";
-
-      if (!Array.isArray(alerts) || alerts.length === 0) {
-        alertsTableBody.innerHTML =
-          `<tr><td colspan="7">No alerts found</td></tr>`;
-        return;
-      }
+      alertDetails.classList.add("hidden");
 
       alerts.forEach(alert => {
         const row = document.createElement("tr");
 
         row.innerHTML = `
-          <td>${alert.created_at ? new Date(alert.created_at).toLocaleDateString() : "-"}</td>
-          <td>${alert.owner || alert.recommended_owner || "Legal"}</td>
+          <td>${new Date(alert.created_at || Date.now()).toLocaleDateString()}</td>
+          <td>${alert.recommended_owner || "Legal"}</td>
           <td>${alert.jurisdiction || "GLOBAL"}</td>
-          <td>${alert.severity || alert.risk || "Medium"}</td>
-          <td>${alert.risk || alert.severity || "Medium"}</td>
-          <td>${alert.title || "Regulatory Alert"}</td>
+          <td>${alert.severity || "MEDIUM"}</td>
+          <td>${alert.risk || alert.severity}</td>
+          <td>${alert.title}</td>
           <td>${alert.status || "OPEN"}</td>
         `;
 
         row.addEventListener("click", () => showAlertDetails(alert));
         alertsTableBody.appendChild(row);
       });
-
     } catch (err) {
       console.error("❌ Failed to load alerts", err);
-      alertsTableBody.innerHTML =
-        `<tr><td colspan="7">Error loading alerts</td></tr>`;
     }
   }
 
@@ -47,69 +49,64 @@ document.addEventListener("DOMContentLoaded", () => {
     alertDetails.classList.remove("hidden");
 
     alertDetails.innerHTML = `
-      <h3>${alert.title || "Regulatory Alert"}</h3>
-
-      <p><strong>Risk:</strong> ${alert.risk || alert.severity || "Medium"}</p>
-      <p><strong>Owner:</strong> ${alert.owner || alert.recommended_owner || "Legal"}</p>
-      <p><strong>Jurisdiction:</strong> ${alert.jurisdiction || "GLOBAL"}</p>
-
-      <p>${alert.description || alert.message || "No additional details provided."}</p>
-
+      <h3>${alert.title}</h3>
+      <p><strong>Risk:</strong> ${alert.risk}</p>
+      <p>${alert.message || alert.description || ""}</p>
+      <p><strong>Jurisdiction:</strong> ${alert.jurisdiction}</p>
       <h4>Sources</h4>
       <ul>
         ${(alert.citations || [])
-          .map(c => `
-            <li>
-              ${c.law || c.title || "Source"}
-              ${c.article ? ` — ${c.article}` : ""}
-            </li>
-          `)
+          .map(c => `<li>${c.law || c.title}: ${c.article || ""}</li>`)
           .join("")}
       </ul>
     `;
   }
 
   // Run Compliance Analysis
-  runBtn.addEventListener("click", async () => {
-    runBtn.disabled = true;
-    runBtn.textContent = "Running...";
-
-    try {
-      await fetch("/api/analyze", { method: "POST" });
-      await fetchAlerts();
-    } catch (err) {
-      console.error("❌ Analysis failed", err);
-    } finally {
-      runBtn.disabled = false;
-      runBtn.textContent = "Run Compliance Analysis";
-    }
+  document.getElementById("runAnalysis").addEventListener("click", async () => {
+    await fetch("/api/analyze", { method: "POST" });
+    await fetchAlerts();
   });
 
   // Refresh
-  refreshBtn.addEventListener("click", fetchAlerts);
+  document.getElementById("refresh").addEventListener("click", fetchAlerts);
 
-  // Ask the Compliance Brain
-  askBtn.addEventListener("click", async () => {
+  // Ask Compliance Brain
+  document.getElementById("askBtn").addEventListener("click", async () => {
     const question = document.getElementById("question").value.trim();
+
     if (!question) return;
 
-    const res = await fetch("/api/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question })
-    });
+    answerBox.textContent = "Thinking…";
+    citationsBox.innerHTML = "";
 
-    const data = await res.json();
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question })
+      });
 
-    document.getElementById("answerBox").textContent =
-      data.answer || "No advisory returned.";
+      const data = await res.json();
 
-    document.getElementById("citationsBox").innerHTML =
-      (data.citations || [])
-        .map(c =>
-          `<div>• ${c.title || c.law} ${c.control || ""}</div>`
-        )
-        .join("");
+      answerBox.textContent = data.answer || "No answer.";
+
+      if (data.citations?.length) {
+        citationsBox.innerHTML = `
+          <h4>Citations</h4>
+          <ul>
+            ${data.citations
+              .map(
+                c =>
+                  `<li><strong>${c.type}:</strong> ${c.title || c.law}</li>`
+              )
+              .join("")}
+          </ul>
+        `;
+      }
+    } catch (err) {
+      answerBox.textContent = "Error contacting compliance engine.";
+    }
   });
 
   // Initial load
