@@ -64,6 +64,12 @@ refreshBtn.addEventListener("click", async () => {
   refreshBtn.disabled = false;
 });
 
+
+document.getElementById("runAnalysis").onclick = async () => {
+  await fetch("/api/analyze", { method: "POST" });
+  fetchAlerts();
+});
+
 };
 
 document.getElementById("refresh").onclick = fetchAlerts;
