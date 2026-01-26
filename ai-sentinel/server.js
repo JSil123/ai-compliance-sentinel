@@ -47,25 +47,30 @@ app.post("/api/analyze", async (req, res) => {
 app.get("/api/alerts", async (req, res) => {
   try {
     const db = await getDb();
-    const rows = await db.all(
-      `SELECT * FROM alerts ORDER BY created_at DESC`
-    );
+    const rows = await db.all(`
+      SELECT *
+      FROM alerts
+      ORDER BY created_at DESC
+    `);
 
     res.json(rows.map(a => ({
+      id: a.id,
       title: a.type,
-      owner: a.recommended_owner || "Legal",
-      jurisdiction: a.jurisdiction,
       severity: a.severity,
       risk: a.severity,
-      status: a.status || "OPEN",
       description: a.message,
+      jurisdiction: a.jurisdiction,
+      status: a.status,
+      owner: "Legal",
+      created_at: a.created_at,
       citations: a.citations ? JSON.parse(a.citations) : []
     })));
   } catch (err) {
-    console.error("Alert fetch error:", err);
+    console.error(err);
     res.status(500).json([]);
   }
 });
+
 
 /**
  * Ask the Compliance Brain
@@ -104,4 +109,5 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () =>
   console.log(`✅ AI Compliance Sentinel running on ${PORT}`)
 );
+
 
