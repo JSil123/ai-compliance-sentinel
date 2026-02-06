@@ -54,6 +54,9 @@ footer { padding: 12px 22px; color: #6b7280; }
   background: #dcfce7;
   color: #166534;
 }
+.muted { color: #6b7280; }
+.citations-list { margin: 8px 0 0; padding-left: 18px; }
+.citations-list li { margin-bottom: 10px; }
 
 /* ===============================
    BUTTON INTERACTION FEEDBACK
@@ -104,6 +107,7 @@ button:disabled {
   background: #2563eb;
   color: white;
 }
+
 
 
 
