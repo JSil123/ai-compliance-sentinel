@@ -54,6 +54,36 @@ footer { padding: 12px 22px; color: #6b7280; }
   background: #dcfce7;
   color: #166534;
 }
+
+/* Risk/Severity chips */
+.risk-chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.risk-chip.high {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.risk-chip.medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.risk-chip.low {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.risk-chip.unknown {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 .muted { color: #6b7280; }
 .citations-list { margin: 8px 0 0; padding-left: 18px; }
 .citations-list li { margin-bottom: 10px; }
@@ -107,6 +137,7 @@ button:disabled {
   background: #2563eb;
   color: white;
 }
+
 
 
 
