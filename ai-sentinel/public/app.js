@@ -61,12 +61,33 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!res.ok) throw new Error(`Alerts fetch failed: ${res.status}`);
       const alerts = await res.json();
 
-      tbody.innerHTML = "";
-      alerts.forEach(a => {
-        const created =
-          a.created_at && typeof a.created_at === "string"
-            ? a.created_at.split(" ")[0]
-            : new Date().toISOString().split("T")[0];
+const status = String(a.status || "OPEN").toUpperCase();
+const statusClass = status.toLowerCase(); // open / acknowledged / resolved
+
+const severity = String(a.severity || a.risk || "UNKNOWN").toUpperCase();
+const riskClass =
+  severity === "HIGH" ? "high" :
+  severity === "MEDIUM" ? "medium" :
+  severity === "LOW" ? "low" : "unknown";
+
+tr.innerHTML = `
+  <td>${esc(created)}</td>
+  <td>${esc(a.jurisdiction || "GLOBAL")}</td>
+
+  <td>
+    <span class="risk-chip ${riskClass}">
+      ${esc(severity)}
+    </span>
+  </td>
+
+  <td>${esc(a.title || "Regulatory Alert")}</td>
+
+  <td>
+    <span class="status-chip ${statusClass}">
+      ${esc(status)}
+    </span>
+  </td>
+`;
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
