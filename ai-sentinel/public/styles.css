@@ -1,35 +1,52 @@
-body { font-family: system-ui, Arial, sans-serif; margin: 0; background: #f6f7fb; }
-header { background: #111827; color: white; padding: 18px 22px; }
-h1 { margin: 0; font-size: 22px; }
-.subtitle { margin: 6px 0 0; opacity: 0.9; font-size: 13px; }
+/* ========= Base layout ========= */
+body {
+  font-family: system-ui, Arial, sans-serif;
+  margin: 0;
+  background: #f6f7fb;
+  color: #111827;
+}
 
-.controls { padding: 14px 22px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-.filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-select { padding: 6px; border-radius: 8px; border: 1px solid #d1d5db; }
+header {
+  background: #111827;
+  color: white;
+  padding: 18px 22px;
+}
 
-.grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; padding: 0 22px 22px; }
-.panel { background: white; border-radius: 14px; padding: 14px; box-shadow: 0 1px 10px rgba(0,0,0,0.05); }
+h1 {
+  margin: 0;
+  font-size: 22px;
+}
 
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 13px; vertical-align: top; }
-th { text-align: left; background: #f9fafb; position: sticky; top: 0; }
-tr:hover { background: #f3f4f6; cursor: pointer; }
-.titleCell { max-width: 420px; }
+.subtitle {
+  margin: 6px 0 0;
+  opacity: 0.9;
+  font-size: 13px;
+}
 
-.details { margin-top: 12px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fafafa; }
-.hidden { display: none; }
+/* ========= Controls ========= */
+.controls {
+  padding: 14px 22px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
 
-textarea { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #d1d5db; }
-.answer { background: #0b1020; color: #e5e7eb; padding: 12px; border-radius: 12px; min-height: 140px; white-space: pre-wrap; }
-footer { padding: 12px 22px; color: #6b7280; }
+.filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
 
-.muted { color: #6b7280; }
-.citations-list { margin: 8px 0 0; padding-left: 18px; }
-.citations-list li { margin-bottom: 10px; }
+select {
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: white;
+}
 
-/* ===============================
-   BUTTON INTERACTION FEEDBACK
-   =============================== */
+/* ========= Buttons ========= */
 button {
   cursor: pointer;
   border: none;
@@ -57,43 +74,176 @@ button:active {
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
 }
 
-#runAnalysis, #askBtn {
+#runAnalysis,
+#askBtn {
   background: linear-gradient(135deg, #2563eb, #1e40af);
 }
 
-/* ===============================
-   STATUS CHIPS
-   =============================== */
+#refresh {
+  background: #2563eb;
+}
+
+/* ========= Main grid ========= */
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  padding: 0 22px 22px;
+}
+
+.panel {
+  background: white;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 1px 10px rgba(0,0,0,0.05);
+}
+
+/* ========= Table ========= */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
+  vertical-align: top;
+}
+
+th {
+  text-align: left;
+  background: #f9fafb;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+tr:hover {
+  background: #f3f4f6;
+  cursor: pointer;
+}
+
+.titleCell {
+  max-width: 420px;
+}
+
+/* ========= Details card ========= */
+#alertDetails,
+.details {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.hidden {
+  display: none;
+}
+
+/* ========= Compliance Brain ========= */
+textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  box-sizing: border-box;
+}
+
+.answer {
+  background: #0b1020;
+  color: #e5e7eb;
+  padding: 12px;
+  border-radius: 12px;
+  min-height: 140px;
+  white-space: pre-wrap;
+}
+
+/* ========= Citations ========= */
+.muted {
+  color: #6b7280;
+}
+
+.citations-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.citations-list li {
+  margin-bottom: 10px;
+}
+
+/* ========= Status chips ========= */
 .status-chip {
   display: inline-block;
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.2;
 }
 
-.status-chip.open { background: #fee2e2; color: #991b1b; }
-.status-chip.acknowledged { background: #fef3c7; color: #92400e; }
-.status-chip.resolved { background: #dcfce7; color: #166534; }
+.status-chip.open {
+  background: #fee2e2;
+  color: #991b1b;
+}
 
-/* ===============================
-   RISK / SEVERITY CHIPS
-   =============================== */
+.status-chip.acknowledged {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-chip.resolved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* ========= Risk/Severity chips ========= */
 .risk-chip {
   display: inline-block;
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.2;
 }
 
-.risk-chip.high { background: #fee2e2; color: #991b1b; }
-.risk-chip.medium { background: #fef3c7; color: #92400e; }
-.risk-chip.low { background: #dcfce7; color: #166534; }
-.risk-chip.unknown { background: #e5e7eb; color: #374151; }
+.risk-chip.high {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.risk-chip.medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.risk-chip.low {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.risk-chip.unknown {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* ========= Footer (if present) ========= */
+footer {
+  padding: 12px 22px;
+  color: #6b7280;
+}
+
+/* ========= Responsive ========= */
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
