@@ -1,95 +1,58 @@
-// analyzer.js
-module.exports.runAnalysis = async function runAnalysis(db) {
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS alerts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT,
-      severity TEXT,
-      message TEXT,
-      jurisdiction TEXT,
-      status TEXT,
-      created_at TEXT,
-      citations TEXT
-    )
-  `);
-
-  // Clear old demo alerts (keeps demo clean)
+// analyzer.js (ES Module)
+export async function runAnalysis(db) {
+  // Clear old alerts (demo-friendly)
   await db.exec(`DELETE FROM alerts`);
 
-  const demoAlerts = [
-    {
-      type: "New Regulation Detected",
-      severity: "High",
-      message:
-        "A new AI regulatory obligation has been identified affecting healthcare data usage.",
-      jurisdiction: "EU",
-      status: "OPEN",
-      citations: JSON.stringify([
-        { law: "EU AI Act", article: "Article 14" }
-      ])
-    },
-    {
-      type: "Model Transparency Gap",
-      severity: "Medium",
-      message:
-        "AI model documentation lacks required explainability artifacts.",
-      jurisdiction: "EU",
-      status: "ACKNOWLEDGED",
-      citations: JSON.stringify([
-        { law: "EU AI Act", article: "Article 13" }
-      ])
-    },
-    {
-      type: "Data Retention Risk",
-      severity: "Medium",
-      message:
-        "Training data retention exceeds defined internal policy limits.",
-      jurisdiction: "US",
-      status: "OPEN",
-      citations: JSON.stringify([
-        { law: "HIPAA", article: "164.306" }
-      ])
-    },
-    {
-      type: "Human Oversight Missing",
-      severity: "High",
-      message:
-        "No documented human oversight mechanism exists for high-risk AI decisions.",
-      jurisdiction: "EU",
-      status: "OPEN",
-      citations: JSON.stringify([
-        { law: "EU AI Act", article: "Article 14" }
-      ])
-    },
-    {
-      type: "Cross-Border Transfer Review",
-      severity: "Low",
-      message:
-        "AI data processing involves cross-border transfers requiring review.",
-      jurisdiction: "GLOBAL",
-      status: "RESOLVED",
-      citations: JSON.stringify([
-        { law: "GDPR", article: "Chapter V" }
-      ])
-    }
-  ];
+  // Pull high-risk regulatory requirements
+  const requirements = await db.all(`
+    SELECT
+      r.id,
+      r.requirement_code,
+      r.title AS requirement_title,
+      r.text AS requirement_text,
+      r.severity,
+      r.recommended_owner,
+      l.name AS law_name,
+      l.jurisdiction,
+      l.effective_date,
+      l.source_url
+    FROM requirements r
+    JOIN laws l ON r.law_id = l.id
+    WHERE r.severity >= 4
+  `);
 
-  for (const a of demoAlerts) {
+  for (const r of requirements) {
+    const alert = {
+      created_at: new Date().toISOString(),
+      alert_type: "REGULATORY_RISK",
+      jurisdiction: r.jurisdiction,
+      title: `Compliance risk: ${r.requirement_title}`,
+      description: `The requirement "${r.requirement_title}" under ${r.law_name} may not be fully addressed by current controls.`,
+      recommended_owner: r.recommended_owner,
+      risk_score: r.severity * 20,
+      severity: r.severity,
+      citations: JSON.stringify([
+        {
+          law: r.law_name,
+          jurisdiction: r.jurisdiction,
+          effective_date: r.effective_date,
+          requirement_code: r.requirement_code,
+          source_url: r.source_url
+        }
+      ]),
+      status: "OPEN"
+    };
+
     await db.run(
       `
-      INSERT INTO alerts (type, severity, message, jurisdiction, status, created_at, citations)
-      VALUES (?, ?, ?, ?, ?, datetime('now'), ?)
+      INSERT INTO alerts
+      (created_at, alert_type, jurisdiction, title, description,
+       recommended_owner, risk_score, severity, citations, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
-      [
-        a.type,
-        a.severity,
-        a.message,
-        a.jurisdiction,
-        a.status,
-        a.citations
-      ]
+      Object.values(alert)
     );
   }
 
-  console.log("✅ Demo alerts seeded");
-};
+  console.log("✅ Compliance analysis completed using regulatory database");
+}
