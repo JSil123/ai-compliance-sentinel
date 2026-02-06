@@ -1,33 +1,21 @@
-const sqlite3 = require("sqlite3");
-const { open } = require("sqlite");
+const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
 
-let db;
+const db = new sqlite3.Database(path.join(__dirname, "compliance.db"));
 
-async function getDb() {
-  if (db) return db;
-
-  db = await open({
-    filename: path.join(__dirname, "compliance.db"),
-    driver: sqlite3.Database
-  });
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS alerts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT,
-      severity TEXT,
-      message TEXT,
-      source TEXT,
-      status TEXT,
-      recommended_owner TEXT,
-      jurisdiction TEXT,
-      citations TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  return db;
-}
-
-module.exports = { getDb };
+module.exports.getDb = async () => {
+  return {
+    run: (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.run(sql, params, err => (err ? reject(err) : resolve()));
+      }),
+    all: (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
+      }),
+    exec: sql =>
+      new Promise((resolve, reject) => {
+        db.exec(sql, err => (err ? reject(err) : resolve()));
+      })
+  };
+};
