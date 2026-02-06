@@ -53,7 +53,14 @@ module.exports.runAnalysis = async function runAnalysis(db) {
       message: "AI data crosses borders and requires legal review.",
       jurisdiction: "GLOBAL",
       status: "RESOLVED",
-      citations: [{ law: "GDPR", article: "Chapter V" }]
+      citations: [
+  {
+    law: "EU AI Act",
+    article: "Article 13",
+    summary: "Requires sufficient documentation and transparency to enable interpretation of AI system outputs."
+  }
+]
+
     }
   ];
 
@@ -72,3 +79,4 @@ module.exports.runAnalysis = async function runAnalysis(db) {
     );
   }
 };
+
