@@ -112,14 +112,28 @@ document.addEventListener("DOMContentLoaded", () => {
         const severity = String(a.severity || a.risk || "UNKNOWN").toUpperCase();
         const status = String(a.status || "OPEN").toUpperCase();
 
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${esc(created)}</td>
-          <td>${esc(a.jurisdiction || "GLOBAL")}</td>
-          <td>${renderRiskChip(severity)}</td>
-          <td>${esc(a.title || "Regulatory Alert")}</td>
-          <td>${renderStatusChip(status)}</td>
-        `;
+const owner = a.owner || a.recommended_owner || "Legal";
+const jurisdiction = a.jurisdiction || "GLOBAL";
+
+// Convert "HIGH" -> "High", "MEDIUM" -> "Medium", "LOW" -> "Low"
+const sevRaw = String(a.severity || a.risk || "UNKNOWN").toUpperCase();
+const severityText =
+  sevRaw.charAt(0) + sevRaw.slice(1).toLowerCase();
+
+// In your original card, Risk mirrored Severity (High/Medium/Low)
+const riskText = severityText;
+
+const tr = document.createElement("tr");
+tr.innerHTML = `
+  <td>${esc(created)}</td>
+  <td>${esc(owner)}</td>
+  <td>${esc(jurisdiction)}</td>
+  <td>${esc(severityText)}</td>
+  <td>${esc(riskText)}</td>
+  <td class="titleCell">${esc(a.title || "Regulatory Alert")}</td>
+  <td>${renderStatusChip(status)}</td>
+`;
+
 
         tr.onclick = () => showDetails(a);
         tbody.appendChild(tr);
