@@ -1,113 +1,124 @@
-const express = require("express");
-const path = require("path");
-const { getDb } = require("./db");
-const { runAnalysis } = require("./analyzer");
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+import { getDb } from "./db.js";
+import { runAnalysis } from "./analyzer.js";
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-/**
- * Initialize DB on startup
- */
-(async () => {
-  try {
-    const db = await getDb();
-    await runAnalysis(db);
-    console.log("✅ Demo alerts seeded");
-  } catch (e) {
-    console.error("Startup error:", e);
-  }
-})();
-
-/**
- * Health check
- */
-app.get("/api/health", (req, res) => {
-  res.json({ ok: true });
+/* =========================
+   ROOT PAGE
+========================= */
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-/**
- * Run Compliance Analysis
- */
-app.post("/api/analyze", async (req, res) => {
-  try {
-    const db = await getDb();
-    await runAnalysis(db);
-    res.json({ ok: true, message: "Analysis completed" });
-  } catch (err) {
-    console.error("Analyze error:", err);
-    res.status(500).json({ ok: false });
-  }
-});
-
-/**
- * List Alerts
- */
+/* =========================
+   GET ALERTS
+========================= */
 app.get("/api/alerts", async (req, res) => {
-  try {
-    const db = await getDb();
-    const rows = await db.all(`
-      SELECT *
-      FROM alerts
-      ORDER BY created_at DESC
-    `);
+  const db = await getDb();
 
-    res.json(rows.map(a => ({
-      id: a.id,
-      title: a.type,
-      severity: a.severity,
-      risk: a.severity,
-      description: a.message,
-      jurisdiction: a.jurisdiction,
-      status: a.status,
-      owner: "Legal",
-      created_at: a.created_at,
-      citations: a.citations ? JSON.parse(a.citations) : []
-    })));
-  } catch (err) {
-    console.error(err);
-    res.status(500).json([]);
-  }
+  const alerts = await db.all(`
+    SELECT * FROM alerts
+    ORDER BY created_at DESC
+  `);
+
+  alerts.forEach(a => {
+    try {
+      a.citations = JSON.parse(a.citations);
+    } catch {
+      a.citations = [];
+    }
+  });
+
+  res.json(alerts);
 });
 
+/* =========================
+   RUN ANALYSIS
+========================= */
+app.post("/api/analyze", async (req, res) => {
+  const db = await getDb();
+  await runAnalysis(db);
+  res.json({ success: true });
+});
 
-/**
- * Ask the Compliance Brain
- */
+/* =========================
+   COMPLIANCE BRAIN
+========================= */
 app.post("/api/ask", async (req, res) => {
-  const q = (req.body.question || "").toLowerCase();
+  const { question } = req.body;
+  const db = await getDb();
 
-  let answer = "No direct regulatory conflict detected.";
-  let citations = [];
+  const lowerQ = question.toLowerCase();
 
-  if (q.includes("phi") || q.includes("health")) {
-    answer =
-      "Use of PHI for AI training is permitted only under strict safeguards. GDPR and the EU AI Act require data minimization, explicit legal basis, and documented human oversight.";
-    citations = [
-      { law: "GDPR", article: "Article 9" },
-      { law: "EU AI Act", article: "Article 14" }
-    ];
-  } else if (q.includes("employee") || q.includes("hr")) {
-    answer =
-      "AI use involving employee data requires transparency, purpose limitation, and documented impact assessments.";
-    citations = [
-      { law: "GDPR", article: "Article 35" }
-    ];
-  } else if (q.includes("biometric")) {
-    answer =
-      "Biometric AI systems are classified as high-risk and may be prohibited depending on jurisdiction.";
-    citations = [
-      { law: "EU AI Act", article: "Article 5" }
-    ];
+  // Pull ALL requirements
+  const requirements = await db.all(`
+    SELECT r.*, l.name as law_name
+    FROM requirements r
+    JOIN laws l ON r.law_id = l.id
+  `);
+
+  const matches = requirements.filter(r =>
+    r.keywords.split(",").some(k =>
+      lowerQ.includes(k.trim().toLowerCase())
+    )
+  );
+
+  if (matches.length === 0) {
+    return res.json({
+      answer: "No direct regulatory match found.",
+      citations: []
+    });
   }
 
-  res.json({ ok: true, answer, citations });
+  // Build answer
+  let answer = "Relevant regulatory guidance:\n\n";
+
+  matches.forEach(m => {
+    answer += `• ${m.title} (${m.law_name})\n`;
+    answer += `${m.text}\n\n`;
+  });
+
+  // Build citations
+  const citations = matches.map(m => ({
+    law: m.law_name,
+    requirement: m.requirement_code
+  }));
+
+  /* =========================
+     AUTO ALERT CREATION
+  ========================= */
+
+  if (matches.some(m => m.severity >= 4)) {
+    await db.run(`
+      INSERT INTO alerts
+      (created_at, alert_type, jurisdiction, title, description,
+       recommended_owner, risk_score, severity, citations, status)
+      VALUES (datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')
+    `, [
+      "POLICY_GAP",
+      "GLOBAL",
+      "High Risk Compliance Inquiry",
+      question,
+      matches[0].recommended_owner,
+      80,
+      matches[0].severity,
+      JSON.stringify(citations)
+    ]);
+  }
+
+  res.json({ answer, citations });
 });
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () =>
-  console.log(`✅ AI Compliance Sentinel running on ${PORT}`)
-);
+const PORT = process.env.PORT || 3000;
 
-
+app.listen(PORT, () => {
+  console.log(`Running on port ${PORT}`);
+});
