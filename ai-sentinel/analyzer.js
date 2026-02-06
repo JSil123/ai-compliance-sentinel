@@ -1,68 +1,129 @@
-// analyzer.js
-export async function runAnalysis(db) {
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS alerts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      created_at TEXT,
-      alert_type TEXT,
-      jurisdiction TEXT,
-      title TEXT,
-      description TEXT,
-      recommended_owner TEXT,
-      risk_score INTEGER,
-      severity INTEGER,
-      citations TEXT,
-      status TEXT
-    );
+function tokenizeKeywords(str) {
+  return str
+    .split(",")
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function overlapScore(reqKeywords, controlKeywords) {
+  const reqSet = new Set(reqKeywords);
+  const ctrlSet = new Set(controlKeywords);
+  let overlap = 0;
+  for (const k of reqSet) if (ctrlSet.has(k)) overlap++;
+  return Math.round((overlap / Math.max(reqSet.size, 1)) * 100);
+}
+
+/**
+ * Simple coverage model:
+ * - find the best matching policy_control by keyword overlap
+ * - compute "coverage" = avg(overlapScore, coverage_score)
+ * - if coverage < threshold => generate alert
+ */
+async function runAnalysis(db) {
+  const requirements = await db.all(`
+    SELECT r.*, l.name as law_name, l.jurisdiction, l.source_url
+    FROM requirements r
+    JOIN laws l ON l.id = r.law_id
   `);
 
-  await db.exec(`DELETE FROM alerts`);
+  const controls = await db.all(`
+    SELECT pc.*, p.name as policy_name, p.owner_team
+    FROM policy_controls pc
+    JOIN policies p ON p.id = pc.policy_id
+  `);
 
-  const demoAlerts = [
-    {
-      alert_type: "LAW_CHANGE",
-      jurisdiction: "EU",
-      title: "EU AI Act – Human Oversight Required",
-      description:
-        "High-risk AI systems must include documented human oversight procedures.",
-      recommended_owner: "Legal",
-      risk_score: 85,
-      severity: 5,
-      citations: [{ law: "EU AI Act", article: "Article 14" }],
-      status: "OPEN"
-    },
-    {
-      alert_type: "DATA_RISK",
-      jurisdiction: "US",
-      title: "HIPAA Audit Logging Gap",
-      description:
-        "Healthcare AI systems lack sufficient audit logging controls.",
-      recommended_owner: "Security",
-      risk_score: 70,
-      severity: 4,
-      citations: [{ law: "HIPAA", article: "164.312(b)" }],
-      status: "OPEN"
+  // Clear existing alerts for demo repeatability
+  await db.run(`DELETE FROM alerts`);
+
+  const now = new Date().toISOString();
+
+  for (const req of requirements) {
+    const reqKeys = tokenizeKeywords(req.keywords);
+
+    let best = null;
+    let bestMatch = -1;
+
+    for (const c of controls) {
+      const cKeys = tokenizeKeywords(c.keywords);
+      const match = overlapScore(reqKeys, cKeys);
+      if (match > bestMatch) {
+        bestMatch = match;
+        best = { ...c, match };
+      }
     }
-  ];
 
-  for (const a of demoAlerts) {
-    await db.run(`
-      INSERT INTO alerts
-      (created_at, alert_type, jurisdiction, title, description,
-       recommended_owner, risk_score, severity, citations, status)
-      VALUES (datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      a.alert_type,
-      a.jurisdiction,
-      a.title,
-      a.description,
-      a.recommended_owner,
-      a.risk_score,
-      a.severity,
-      JSON.stringify(a.citations),
-      a.status
-    ]);
+    const claimed = best ? best.coverage_score : 0;
+    const coverage = best ? Math.round((best.match + claimed) / 2) : 0;
+
+    // Thresholds: stricter for high severity requirements
+    const threshold = req.severity >= 5 ? 75 : req.severity === 4 ? 65 : 55;
+
+    if (coverage < threshold) {
+      const riskScore = Math.min(100, (req.severity * 18) + (threshold - coverage));
+      const owner = req.recommended_owner;
+
+      const citations = [
+        { type: "law", title: req.law_name, url: req.source_url, requirement: req.requirement_code },
+        best
+          ? { type: "policy_control", title: best.policy_name, control: best.control_code, match: best.match }
+          : { type: "policy_control", title: "No matching internal control found", control: "N/A", match: 0 }
+      ];
+
+      await db.run(
+        `INSERT INTO alerts
+          (created_at, alert_type, jurisdiction, title, description, recommended_owner, risk_score, severity, citations, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          now,
+          "POLICY_GAP",
+          req.jurisdiction,
+          `[${req.requirement_code}] Coverage gap for ${req.title}`,
+          `Requirement "${req.title}" from ${req.law_name} appears under-covered. Estimated coverage=${coverage}%. Recommended threshold=${threshold}%. Suggested action: review policy controls, add logging/oversight/data minimization as applicable.`,
+          owner,
+          riskScore,
+          req.severity,
+          JSON.stringify(citations),
+          "OPEN"
+        ]
+      );
+    }
   }
 
-  console.log("✅ Compliance analysis complete");
+  // HR demo: pay band disclosure scan (mock)
+  const payBands = await db.get(`
+    SELECT * FROM hr_artifacts WHERE artifact_type='PAY_BANDS' AND region='EU'
+  `);
+
+  if (payBands) {
+    const bands = JSON.parse(payBands.content);
+    const missingPosted = bands.filter(b => b.posted === false);
+    if (missingPosted.length > 0) {
+      const citations = [
+        { type: "law", title: "Pay Transparency Rule (Example Global Policy Driver)", url: "https://example.com/pay-transparency" },
+        { type: "artifact", title: payBands.name, region: payBands.region, last_updated: payBands.last_updated }
+      ];
+
+      await db.run(
+        `INSERT INTO alerts
+          (created_at, alert_type, jurisdiction, title, description, recommended_owner, risk_score, severity, citations, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          now,
+          "HR_RISK",
+          "EU",
+          "Potential pay band transparency gap (demo scan)",
+          `Detected ${missingPosted.length} EU roles where pay bands are not marked as posted/visible. Recommend HR+Legal review for regional disclosure alignment and documentation updates.`,
+          "HR",
+          78,
+          4,
+          JSON.stringify(citations),
+          "OPEN"
+        ]
+      );
+    }
+  }
+
+  return { ok: true };
 }
+
+module.exports = { runAnalysis };
