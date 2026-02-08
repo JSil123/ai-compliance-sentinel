@@ -193,7 +193,20 @@ tr.innerHTML = `
       if (!res.ok) throw new Error(`Ask failed: ${res.status}`);
       const data = await res.json();
       const box = document.getElementById("answerBox");
-      box.textContent = data.answer || "No answer returned.";
+const citeBox = document.getElementById("citationsBox");
+
+box.textContent = data.answer || "No answer returned.";
+
+// Clear old citations
+citeBox.innerHTML = "";
+
+// Render citations if provided
+if (data.citations && data.citations.length > 0) {
+  citeBox.innerHTML =
+    "<strong>Sources:</strong><br>" +
+    data.citations.map(c => `• ${c.title} (${c.region})`).join("<br>");
+}
+
 
 if (data.citations && data.citations.length > 0) {
   const citeDiv = document.createElement("div");
