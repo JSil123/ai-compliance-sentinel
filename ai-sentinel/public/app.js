@@ -203,7 +203,7 @@ citeBox.innerHTML = "";
 // Render citations if provided
 if (data.citations && data.citations.length > 0) {
   citeBox.innerHTML =
-    "<strong>Sources:</strong><br>" +
+    "<strong>Regulatory Sources:</strong><br>" +
     data.citations.map(c => `• ${c.title} (${c.region})`).join("<br>");
 }
 
