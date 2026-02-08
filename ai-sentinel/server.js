@@ -30,20 +30,37 @@ app.get("/api/alerts", async (req, res) => {
 });
 
 app.post("/api/ask", async (req, res) => {
-  const q = (req.body.question || "").toLowerCase();
-  let answer = "No direct regulatory conflicts detected.";
+  const { question } = req.body;
+  const db = await getDb();
 
-  if (q.includes("phi")) {
+  // Simple keyword logic for demo
+  let answer = "";
+  let citations = [];
+
+  if (question.toLowerCase().includes("employee") && question.toLowerCase().includes("ai")) {
     answer =
-      "PHI use requires GDPR lawful basis, minimization, and human oversight.";
-  } else if (q.includes("bias")) {
-    answer =
-      "Bias monitoring and fairness testing are required for high-risk AI.";
+      "AI use involving employee data requires transparency, purpose limitation, and documented impact assessments.";
+
+    citations = await db.all(`
+      SELECT title, jurisdiction 
+      FROM laws 
+      WHERE title LIKE '%AI%' OR title LIKE '%GDPR%'
+      LIMIT 3
+    `);
+  } else {
+    answer = "Please consult compliance for further review.";
   }
 
-  res.json({ answer });
+  await db.close();
+
+  res.json({
+    answer,
+    citations
+  });
 });
+
 
 app.listen(10000, () =>
   console.log("AI Compliance Sentinel running on port 10000")
 );
+
