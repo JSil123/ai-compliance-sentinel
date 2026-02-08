@@ -200,6 +200,17 @@ box.textContent = data.answer || "No answer returned.";
 // Clear old citations
 citeBox.innerHTML = "";
 
+// Show confidence
+if (data.confidence) {
+  const confDiv = document.createElement("div");
+  confDiv.style.marginTop = "8px";
+  confDiv.style.fontSize = "12px";
+  confDiv.style.opacity = "0.7";
+  confDiv.innerHTML = `<strong>Confidence:</strong> ${data.confidence}`;
+  box.appendChild(confDiv);
+}
+
+
 // Render citations if provided
 if (data.citations && data.citations.length > 0) {
   citeBox.innerHTML =
