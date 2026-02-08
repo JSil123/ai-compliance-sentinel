@@ -34,6 +34,8 @@ app.post("/api/ask", async (req, res) => {
 
   let answer = "No direct regulatory conflicts detected.";
   let citations = [];
+  let confidence = "High";
+  
 
   if (q.includes("phi") || q.includes("employee")) {
     answer =
@@ -53,7 +55,8 @@ app.post("/api/ask", async (req, res) => {
     ];
   }
 
-  res.json({ answer, citations });
+  res.json({ answer, citations, confidence });
+
 });
 
 
@@ -61,5 +64,6 @@ app.post("/api/ask", async (req, res) => {
 app.listen(10000, () =>
   console.log("AI Compliance Sentinel running on port 10000")
 );
+
 
 
