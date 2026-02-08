@@ -30,37 +30,36 @@ app.get("/api/alerts", async (req, res) => {
 });
 
 app.post("/api/ask", async (req, res) => {
-  const { question } = req.body;
-  const db = await getDb();
+  const q = (req.body.question || "").toLowerCase();
 
-  // Simple keyword logic for demo
-  let answer = "";
+  let answer = "No direct regulatory conflicts detected.";
   let citations = [];
 
-  if (question.toLowerCase().includes("employee") && question.toLowerCase().includes("ai")) {
+  if (q.includes("phi") || q.includes("employee")) {
     answer =
-      "AI use involving employee data requires transparency, purpose limitation, and documented impact assessments.";
+      "AI use involving sensitive or employee data requires transparency, purpose limitation, and documented impact assessments.";
 
-    citations = await db.all(`
-      SELECT title, jurisdiction 
-      FROM laws 
-      WHERE title LIKE '%AI%' OR title LIKE '%GDPR%'
-      LIMIT 3
-    `);
-  } else {
-    answer = "Please consult compliance for further review.";
+    citations = [
+      { title: "GDPR Article 5 – Data Minimization", region: "EU" },
+      { title: "EU AI Act – High-Risk AI Requirements", region: "EU" }
+    ];
+  } else if (q.includes("bias")) {
+    answer =
+      "Bias monitoring and fairness testing are required for high-risk AI systems.";
+
+    citations = [
+      { title: "EU AI Act – Risk Management", region: "EU" },
+      { title: "EEOC AI Hiring Guidance", region: "US" }
+    ];
   }
 
-  await db.close();
-
-  res.json({
-    answer,
-    citations
-  });
+  res.json({ answer, citations });
 });
+
 
 
 app.listen(10000, () =>
   console.log("AI Compliance Sentinel running on port 10000")
 );
+
 
