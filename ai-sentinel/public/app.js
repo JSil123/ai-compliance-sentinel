@@ -192,8 +192,24 @@ tr.innerHTML = `
 
       if (!res.ok) throw new Error(`Ask failed: ${res.status}`);
       const data = await res.json();
-      document.getElementById("answerBox").textContent =
-        data.answer || "No answer returned.";
+      const box = document.getElementById("answerBox");
+      box.textContent = data.answer || "No answer returned.";
+
+if (data.citations && data.citations.length > 0) {
+  const citeDiv = document.createElement("div");
+  citeDiv.style.marginTop = "10px";
+  citeDiv.style.fontSize = "12px";
+  citeDiv.style.opacity = "0.8";
+
+  citeDiv.innerHTML =
+    "<strong>Sources:</strong><br>" +
+    data.citations
+      .map(c => `• ${c.title} (${c.region})`)
+      .join("<br>");
+
+  box.appendChild(citeDiv);
+}
+
     } catch (e) {
       console.error("❌ Ask failed:", e);
       document.getElementById("answerBox").textContent =
