@@ -34,7 +34,6 @@ app.post("/api/ask", async (req, res) => {
 
   let answer = "No direct regulatory conflicts detected.";
   let citations = [];
-  let confidence = "High";
   
 
   if (q.includes("phi") || q.includes("employee")) {
@@ -54,6 +53,11 @@ app.post("/api/ask", async (req, res) => {
       { title: "EEOC AI Hiring Guidance", region: "US" }
     ];
   }
+  let confidence = "Medium";
+
+if (citations.length > 0) {
+  confidence = "High";
+}
 
   res.json({ answer, citations, confidence });
 
@@ -64,6 +68,7 @@ app.post("/api/ask", async (req, res) => {
 app.listen(10000, () =>
   console.log("AI Compliance Sentinel running on port 10000")
 );
+
 
 
 
